@@ -1,0 +1,38 @@
+/**
+ * Galuxium Nexus V2: Core Design Tokens
+ * Strictly Warm Neutrals: Zero Blue, Zero Green anywhere across UI, borders, charts, or 3D lighting.
+ */
+
+:root {
+  /* Surface and Background Roles */
+  --color-warm-bg: #F7F4EE;         /* Off-white */
+  --color-warm-surface: #EFEBE3;    /* Pearl white */
+  --color-warm-cream: #F3EBD8;      /* Raised surface / cards */
+  --color-warm-sand: #D9D0BF;       /* Border / dividers */
+
+  /* Typography Roles */
+  --color-warm-charcoal: #2B2824;   /* Primary text (high contrast) */
+  --color-warm-taupe: #6E665A;      /* Secondary text */
+
+  /* Accent & Status Roles */
+  --color-warm-accent: #B08D57;     /* Antique gold (decorative / large headings only) */
+  --color-warm-amber: #C98A2B;      /* Warning / needs review (with charcoal text) */
+  --color-warm-terracotta: #B5523B; /* Error / rejected */
+  --color-warm-bronze: #8A6A3B;     /* Success / matched (WCAG AA compliant text) */
+
+  /* Glassmorphism Surface Tokens */
+  --glass-pearl: rgba(239, 235, 227, 0.85);
+  --glass-cream: rgba(243, 235, 216, 0.90);
+  --glass-border: rgba(217, 208, 191, 0.70);
+  --glass-blur: 16px;
+
+  /* Warm Elevation Shadows */
+  --shadow-warm-sm: 0 1px 3px rgba(43, 40, 36, 0.05);
+  --shadow-warm-md: 0 4px 12px -2px rgba(43, 40, 36, 0.08), 0 2px 6px -1px rgba(43, 40, 36, 0.04);
+  --shadow-warm-lg: 0 12px 28px -4px rgba(43, 40, 36, 0.12), 0 4px 10px -2px rgba(43, 40, 36, 0.05);
+  --shadow-warm-inset: inset 0 1px 2px rgba(43, 40, 36, 0.06);
+
+  /* Typography Stacks */
+  --font-serif: Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

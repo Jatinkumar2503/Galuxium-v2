@@ -1,29 +1,35 @@
+@import '../styles/tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  --color-warm-bg: #F7F4EE;
-  --color-warm-surface: #EFEBE3;
-  --color-warm-cream: #F3EBD8;
-  --color-warm-sand: #D9D0BF;
-  --color-warm-charcoal: #2B2824;
-  --color-warm-taupe: #6E665A;
-  --color-warm-accent: #B08D57;
-  --color-warm-amber: #C98A2B;
-  --color-warm-terracotta: #B5523B;
-  --color-warm-bronze: #8A6A3B;
-}
 
 @layer base {
   body {
     background-color: var(--color-warm-bg);
     color: var(--color-warm-charcoal);
+    font-family: var(--font-sans);
   }
 
-  /* Accessible focus states in antique gold instead of default blue */
+  /* Accessible focus rings strictly in Antique Gold (#B08D57) instead of default browser blue */
   *:focus-visible {
-    outline: 2px solid var(--color-warm-accent);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-warm-accent) !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Custom warm scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-warm-bg);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-warm-sand);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-warm-taupe);
   }
 }
