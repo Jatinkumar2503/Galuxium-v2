@@ -33,8 +33,26 @@
 
 ---
 
+## PHASE 1: Foundation and Project Setup (10/10 Complete)
+*Goal: a deployed, empty, professional skeleton.*
+
+- [x] 1.1 Finalize the product name and register the domain or Vercel project name.
+- [x] 1.2 Create the public GitHub repo with README stub, license, `.gitignore`, and issue templates.
+- [x] 1.3 Scaffold Next.js (App Router) + TypeScript (strict mode) + Tailwind.
+- [x] 1.4 Configure ESLint, Prettier, and a pre-commit hook (lint + typecheck).
+- [x] 1.5 Set up GitHub Actions CI: install, lint, typecheck, test, build on every push.
+- [x] 1.6 Create the Supabase project and store all keys in environment variables, never in code.
+- [x] 1.7 Add `.env.example` and a startup check that fails fast if required variables are missing.
+- [x] 1.8 Deploy the empty app to Vercel with preview deployments per branch.
+- [x] 1.9 Set up Sentry for error tracking and a basic `/api/health` endpoint.
+- [x] 1.10 Write `docs/DECISIONS.md` recording stack choices and why.
+
+**Exit Gate:** a push to a branch runs CI green, produces a preview URL, and the production URL loads. No secrets in the repo history. — **PASSED (Verified Oct 05, 2026)**
+
+---
+
 ## Progress Overview
-- [ ] Phase 1: Foundation and Project Setup (5/10)
+- [x] Phase 1: Foundation and Project Setup (10/10) — Signed Off
 - [ ] Phase 2: Database, Multi-Tenancy, and Row-Level Security (0/10)
 - [ ] Phase 3: Authentication and Session Security (0/10)
 - [ ] Phase 4: Design System and 3D Frontend Shell (0/10)
@@ -50,7 +68,7 @@
 ## Phase Sign-Off Log
 | Phase | All 10 done | Exit gate passed | Date |
 |---|---|---|---|
-| 1 | [ ] | [ ] | In Progress |
+| 1 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 2 | [ ] | [ ] | Pending |
 | 3 | [ ] | [ ] | Pending |
 | 4 | [ ] | [ ] | Pending |
