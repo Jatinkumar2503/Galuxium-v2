@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Galuxium Nexus V2: Pre-commit gate hook
+echo "[pre-commit] Running typecheck and lint verification..."
+npm run typecheck || exit 1
+npm run lint || exit 1
+echo "[pre-commit] Checks passed successfully."
