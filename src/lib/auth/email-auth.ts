@@ -1,3 +1,5 @@
+'use server';
+
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getOAuthRedirectUrl } from '@/lib/auth/oauth';
 
