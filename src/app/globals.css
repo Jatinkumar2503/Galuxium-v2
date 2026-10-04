@@ -11,7 +11,7 @@
     font-family: var(--font-sans);
   }
 
-  /* Accessible focus rings strictly in Antique Gold (#B08D57) instead of default browser blue */
+  /* Accessible focus rings strictly in Antique Gold (#B08D57) */
   *:focus-visible {
     outline: 2px solid var(--color-warm-accent) !important;
     outline-offset: 2px !important;

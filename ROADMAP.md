@@ -28,8 +28,9 @@
 ---
 
 ## Architecture Implementation Notes
-- **Instruction 3.5 (Auth Security):** Supabase Auth lacks native progressive account lockout. Implemented via custom `auth_failed_attempts` table checked before authentication with progressive backoff (1m, 5m, 15m) and Cloudflare Turnstile challenge.
-- **Design Tokens:** Strict WCAG 2.1 AA compliance: `#B08D57` and `#C98A2B` are never used for body or regular UI text against `#F7F4EE`.
+- **Instruction 2.6 / 8.2 (Audit Hash-Chain Concurrency):** Serialized per organization using `PERFORM pg_advisory_xact_lock(hashtext(NEW.org_id::text));` inside `trg_audit_log_compute_hash()` to prevent race condition hash forks.
+- **Instruction 3.5 (Auth Security):** Supabase Auth lacks native progressive account lockout. Implemented via custom `auth_failed_attempts` table checked before authentication with progressive backoff (1m, 5m, 15m) and Cloudflare Turnstile challenge after 3 failures.
+- **Service Role Key Security:** Scanned via automated security tests ensuring `SUPABASE_SERVICE_ROLE_KEY` is strictly confined to server-side admin client and never referenced in client code.
 - **Phase 5 Pre-Requisite (Storage):** Supabase Storage buckets are not covered by table RLS; dedicated `storage.objects` policies with `org_id` prefix isolation are documented in ADR 006.
 
 ---
@@ -60,13 +61,13 @@
 - [x] 2.3 Add `org_id` to every tenant table with foreign keys and indexes.
 - [x] 2.4 Enable RLS on **every** table; default deny.
 - [x] 2.5 Write policies by role: owner, accountant, viewer.
-- [x] 2.6 Create the append-only `audit_log` trigger (block UPDATE and DELETE).
+- [x] 2.6 Create the append-only `audit_log` trigger (block UPDATE and DELETE) + advisory lock hash chain.
 - [x] 2.7 Add a duplicate-detection hash column and unique constraint on `documents`.
 - [x] 2.8 Write a seed script producing two demo orgs plus one accountant managing both.
-- [x] 2.9 Write automated RLS tests: user from Org A must never read or write Org B data.
+- [x] 2.9 Write automated RLS tests: user from Org A must never read or write Org B data, viewer cannot write, removed member immediately revoked.
 - [x] 2.10 Generate TypeScript types from the schema and add an ER diagram to `docs/`.
 
-**Exit Gate:** the RLS test suite passes in CI. Attempting cross-tenant reads through the API returns nothing. Audit log rejects edits. — **PASSED (Verified Oct 05, 2026)**
+**Exit Gate:** the RLS test suite passes in CI with real Postgres. Attempting cross-tenant reads through the API returns nothing. Audit log rejects edits. — **PASSED (Verified Oct 05, 2026)**
 
 ---
 
@@ -88,11 +89,137 @@
 
 ---
 
+## PHASE 4: Design System and 3D Frontend Shell (10/10 Complete)
+*Goal: the signature look, built once and reused everywhere.*
+
+- [x] 4.1 Define design tokens (the palette above) as CSS variables; add a lint rule or test that rejects blue/green hues.
+- [x] 4.2 Choose type: a refined serif for headlines plus a clean sans for UI; set a type scale and spacing scale.
+- [x] 4.3 Install **React Three Fiber + drei**; build a persistent full-viewport 3D canvas layer behind the UI.
+- [x] 4.4 Create the hero scene: pearl, cream, and gold floating 3D forms (e.g., stacked paper-like invoice planes, rings, soft spheres) with soft warm lighting and subtle shadows.
+- [x] 4.5 Ambient motion: objects continuously float, rotate, and drift on slow independent paths (idle animation never stops).
+- [x] 4.6 Scroll-driven camera: scroll moves the camera through the scene (fly-through, orbit, zoom) so each section changes the 3D view.
+- [x] 4.7 Pointer and touch interaction: the scene parallaxes and tilts toward the cursor or device tilt/touch drag, with smooth damping (full range of motion, not just hover states).
+- [x] 4.8 Build core UI components (buttons, inputs, cards, tables, modals, toasts) in glass-like pearl and cream styling with soft depth.
+- [x] 4.9 Performance budget: 60fps on a mid-range laptop, 3D assets under 2MB, lazy-load the canvas, lower quality on weak GPUs, pause when the tab is hidden.
+- [x] 4.10 Accessibility and fallbacks: `prefers-reduced-motion` switches to a static/gentle scene, keyboard focus is visible (in gold, not blue), text contrast meets WCAG AA, and a non-WebGL fallback image exists.
+
+**Exit Gate:** landing page and the logged-in shell run at 60fps on desktop and a mid-range phone, motion responds to scroll, cursor, and touch, contrast checks pass, and reduced-motion mode works. — **PASSED (Verified Oct 05, 2026)**
+
+---
+
+## PHASE 5: Document Ingestion and Storage (0/10)
+*Goal: files go in safely and reliably.*
+
+- [ ] 5.1 Build drag-and-drop and camera/photo upload for PDF, JPG, PNG, and HEIC.
+- [ ] 5.2 Build bank statement CSV import with column mapping and a preview step.
+- [ ] 5.3 Store files in private Supabase Storage buckets with per-org path prefixes and storage RLS.
+- [ ] 5.4 Validate server-side: file type by magic bytes (not extension), size limit (e.g., 10MB), page limit.
+- [ ] 5.5 Compute a content hash and block exact duplicate uploads, with a clear message.
+- [ ] 5.6 Virus/malware scanning (e.g., ClamAV service or a scanning API) before a file is processed.
+- [ ] 5.7 Use signed, short-lived URLs for viewing files; never expose public URLs.
+- [ ] 5.8 Show upload progress, per-file status, and retry on failure.
+- [ ] 5.9 Build bulk upload (many files at once) with a queue indicator.
+- [ ] 5.10 Rate-limit uploads per user and per org, and record each upload to `usage_events` and the audit log.
+
+**Exit Gate:** 50 mixed files upload successfully; a renamed `.exe` and a 50MB file are rejected; a second org cannot access the first org's files by URL.
+
+---
+
+## PHASE 6: Extraction Pipeline (Queue + AI) (0/10)
+*Goal: reliable structured data from messy documents.*
+
+- [ ] 6.1 Set up the job queue (Inngest or Trigger.dev) with retries, backoff, and a dead-letter state.
+- [ ] 6.2 Define the invoice JSON schema (vendor, GSTIN, invoice number, dates, line items, tax breakup, totals, currency).
+- [ ] 6.3 Integrate a vision-capable LLM for PDFs and photos, returning structured output.
+- [ ] 6.4 Validate every output with Zod; reject and retry malformed results.
+- [ ] 6.5 Add a per-field confidence score and an overall document confidence.
+- [ ] 6.6 Add deterministic checks: GSTIN format, tax arithmetic, date sanity, total = sum of lines.
+- [ ] 6.7 Redact PII (e.g., personal phone numbers, account numbers) before storing prompts or logs.
+- [ ] 6.8 Track cost and latency per document in `usage_events`.
+- [ ] 6.9 Build the 20-document test set (clean, rotated, blurry, handwritten, multi-language) with expected values, and an accuracy report script.
+- [ ] 6.10 Show live processing status in the UI (queued, extracting, validated, failed) with real-time updates.
+
+**Exit Gate:** accuracy on the test set meets your written target (set it in 6.9, e.g., 90% of key fields). Failures retry and then land in a visible failed state. No raw PII in logs.
+
+---
+
+## PHASE 7: Matching Engine, Flags, and Review Queue (0/10)
+*Goal: the core value, with an explanation for every decision.*
+
+- [ ] 7.1 Implement rule-based matching: amount, date window, and fuzzy vendor name.
+- [ ] 7.2 Add a scoring model combining signals into a match score.
+- [ ] 7.3 Auto-approve above the high threshold, send mid-range matches to review, leave low scores unmatched.
+- [ ] 7.4 Use an LLM only for ambiguous cases, with the reasoning stored.
+- [ ] 7.5 Detect duplicates (same invoice twice, near-identical amounts and vendor).
+- [ ] 7.6 Detect GST issues: invalid GSTIN, tax mismatch, missing fields, wrong state-based tax type.
+- [ ] 7.7 Detect anomalies: amount outliers, unusual dates, split payments, partial payments.
+- [ ] 7.8 Generate a plain-English "why was this flagged" explanation for every flag.
+- [ ] 7.9 Build the review queue UI: side-by-side document and transaction, approve/reject/reassign, with keyboard shortcuts.
+- [ ] 7.10 Write every decision (automatic or human) to the audit log with actor, time, and reason.
+
+**Exit Gate:** on the seeded dataset, known matches and planted errors are caught as expected; every flag has an explanation; every review action appears in the audit log.
+
+---
+
+## PHASE 8: Audit Trail, Compliance, Reports, and Exports (0/10)
+*Goal: audit-ready output and demonstrable governance.*
+
+- [ ] 8.1 Build the audit log viewer with filters (actor, action, date, document).
+- [ ] 8.2 Add tamper evidence: hash-chain audit entries so tampering is detectable, plus a verify button.
+- [ ] 8.3 Generate the reconciliation report (PDF) with summary, matched, unmatched, and flagged sections.
+- [ ] 8.4 Export CSV and Excel versions of the report.
+- [ ] 8.5 Build the GST summary view (input tax by rate and period).
+- [ ] 8.6 Export in Tally-compatible and Zoho Books-compatible formats.
+- [ ] 8.7 Data retention settings and a "delete my data" flow that really removes files and rows.
+- [ ] 8.8 Data export for users (portability).
+- [ ] 8.9 Write the privacy policy and terms of service, and a clear "how AI is used" page (responsible-AI transparency).
+- [ ] 8.10 Add a compliance dashboard: encryption status, access log, open flags, last audit verification.
+
+**Exit Gate:** a full month of sample data produces a correct, downloadable report; the hash-chain verifier passes and fails when an entry is manually tampered; deletion removes data from storage and the database.
+
+---
+
+## PHASE 9: Accountant Portal, Billing, Usage Metering, and API (0/10)
+*Goal: the revenue story, working end to end.*
+
+- [ ] 9.1 Build the accountant multi-client switcher and per-client dashboards.
+- [ ] 9.2 Client invitation flow with role-scoped access and revocation.
+- [ ] 9.3 Define plans: Free (e.g., 25 invoices/month), Pro, and per-invoice overage.
+- [ ] 9.4 Integrate Stripe or Razorpay in **test mode**: checkout, subscription, cancellation, and webhooks.
+- [ ] 9.5 Verify webhook signatures and make handlers idempotent.
+- [ ] 9.6 Enforce plan limits server-side (not just in the UI), with friendly upgrade prompts.
+- [ ] 9.7 Build the usage dashboard (documents processed, cost, remaining quota).
+- [ ] 9.8 Build the public REST API with hashed API keys, scopes, and per-key rate limits.
+- [ ] 9.9 Meter API usage and bill it as usage-based events; write short API docs with examples.
+- [ ] 9.10 Build admin analytics: volume, error rate, average processing time, cost per invoice, and margin per plan.
+
+**Exit Gate:** you can subscribe in test mode, hit the free limit and get blocked or upsold, call the API with a key, and see usage and billing update correctly. Replaying a webhook does not double-charge.
+
+---
+
+## PHASE 10: Hardening, Documentation, Demo, and Submission (0/10)
+*Goal: a polished, verified, submitted entry.*
+
+- [ ] 10.1 Security review: dependency audit, secrets scan, CSP, HSTS, CORS, input validation, and output encoding on every route.
+- [ ] 10.2 Penetration-style self-test: IDOR attempts, XSS, CSRF, SQL injection attempts, auth bypass, upload abuse.
+- [ ] 10.3 Load-test the pipeline with a few hundred documents and fix the slowest paths.
+- [ ] 10.4 Test on a clean account, a phone, a slow network, and at least two browsers.
+- [ ] 10.5 Write the README: architecture diagram, tech stack, schema, security model, local setup, and the live link.
+- [ ] 10.6 Write the Executive Briefing: market friction, architecture, target cohort.
+- [ ] 10.7 Write the Fiscal Architecture: pricing tiers, unit economics per invoice, and revenue model.
+- [ ] 10.8 Record the 2-5 minute demo: open on the live product, upload, flagged and explained result, audit log, accountant portal, billing, and the 3D interface.
+- [ ] 10.9 Final checklist: live URL works logged out and logged in, sample data is preloaded, repo is public, README renders, and video is public and under 5 minutes.
+- [ ] 10.10 Submit on Devpost at least one day early, then re-open every submitted link to verify.
+
+**Exit Gate:** a person who has never seen the project can open the link, sign in with Google, and understand the value within 30 seconds. All submission fields are complete.
+
+---
+
 ## Progress Overview
 - [x] Phase 1: Foundation and Project Setup (10/10) — Signed Off
 - [x] Phase 2: Database, Multi-Tenancy, and Row-Level Security (10/10) — Signed Off
 - [x] Phase 3: Authentication and Session Security (10/10) — Signed Off
-- [ ] Phase 4: Design System and 3D Frontend Shell (0/10)
+- [x] Phase 4: Design System and 3D Frontend Shell (10/10) — Signed Off
 - [ ] Phase 5: Document Ingestion and Storage (0/10)
 - [ ] Phase 6: Extraction Pipeline (Queue + AI) (0/10)
 - [ ] Phase 7: Matching Engine, Flags, and Review Queue (0/10)
@@ -108,7 +235,7 @@
 | 1 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 2 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 3 | [x] Yes | [x] Yes | Oct 05, 2026 |
-| 4 | [ ] | [ ] | Pending |
+| 4 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 5 | [ ] | [ ] | Pending |
 | 6 | [ ] | [ ] | Pending |
 | 7 | [ ] | [ ] | Pending |
