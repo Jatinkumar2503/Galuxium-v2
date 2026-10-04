@@ -38,3 +38,8 @@
 - **Status:** Accepted
 - **Context:** Need a dynamic, alive interface that sets Galuxium apart in hackathon judging while keeping performance at 60fps on mid-range laptops.
 - **Decision:** React Three Fiber + Drei rendering warm floating geometric paper planes, rings, and spheres with ambient drift, scroll-coupled camera fly-through, and pointer parallax. Canvas pauses when tab loses focus and falls back gracefully for `prefers-reduced-motion`.
+
+## ADR 006: Supabase Storage Bucket Isolation & RLS Enforcement (Phase 5 Requirement)
+- **Status:** Accepted
+- **Context:** PostgreSQL RLS applied to tables (`documents`, `clients`, etc.) does not automatically protect files stored in Supabase Storage buckets. Unchecked storage access could allow cross-tenant file downloads if a user guesses a direct URL.
+- **Decision:** All files must be stored with an explicit organization prefix: `documents/<org_id>/<year>/<month>/<doc_id>.<ext>`. In Phase 5 (Instruction 5.3), dedicated RLS policies on `storage.objects` will enforce that users can only upload and read files where the first path segment matches an `org_id` they belong to in `memberships`. Direct public URLs are disabled; only signed short-lived URLs (ADR 5.7) will be issued.

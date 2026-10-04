@@ -23,6 +23,12 @@ class PostgresRLSSimulator {
     this.apiKeys = [...(data.apiKeys || [])];
   }
 
+  removeMember(userId, orgId) {
+    this.memberships = this.memberships.filter(
+      (m) => !(m.userId === userId && m.orgId === orgId)
+    );
+  }
+
   getUserRole(userId, orgId) {
     const m = this.memberships.find((m) => m.userId === userId && m.orgId === orgId);
     return m ? m.role : null;
@@ -35,7 +41,7 @@ class PostgresRLSSimulator {
   // Simulates: SELECT * FROM documents WHERE ... (with RLS)
   queryDocuments(userId, orgId) {
     if (!this.isMember(userId, orgId)) {
-      // RLS Default Deny: Returns 0 rows
+      // RLS Default Deny: Returns 0 rows immediately upon membership loss
       return [];
     }
     return this.documents.filter((d) => d.orgId === orgId);
@@ -48,6 +54,18 @@ class PostgresRLSSimulator {
       throw new Error('RLS Violation: Insufficient role to insert documents into organization.');
     }
     this.documents.push(doc);
+    return doc;
+  }
+
+  // Simulates: UPDATE documents ... (with RLS: owner or accountant)
+  updateDocument(userId, docId, updates) {
+    const doc = this.documents.find((d) => d.id === docId);
+    if (!doc) throw new Error('Document not found');
+    const role = this.getUserRole(userId, doc.orgId);
+    if (!role || (role !== 'owner' && role !== 'accountant')) {
+      throw new Error('RLS Violation: Insufficient role to update documents.');
+    }
+    Object.assign(doc, updates);
     return doc;
   }
 
@@ -146,13 +164,47 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
     assert.equal(docsB[0].fileName, 'Deccan-Invoice-502.pdf');
   });
 
-  await t.test('Role RBAC: Viewer cannot write documents into Org A', () => {
+  await t.test('Negative test: Viewer role cannot insert or modify documents', () => {
     assert.throws(
       () => {
         db.insertDocument(USER_VIEWER_A, {
           id: 'doc-viewer',
           orgId: ORG_A,
           fileName: 'Viewer-Attempt.pdf',
+        });
+      },
+      /RLS Violation/i
+    );
+
+    assert.throws(
+      () => {
+        db.updateDocument(USER_VIEWER_A, 'doc-a1', { fileName: 'Tampered-By-Viewer.pdf' });
+      },
+      /RLS Violation/i
+    );
+  });
+
+  await t.test('Negative test: Removed member loses read and write access immediately', () => {
+    // Shared accountant currently has access to Org B
+    assert.equal(db.queryDocuments(USER_ACCOUNTANT_SHARED, ORG_B).length, 1);
+
+    // Org B owner revokes membership
+    db.removeMember(USER_ACCOUNTANT_SHARED, ORG_B);
+
+    // Immediate read revocation
+    assert.equal(
+      db.queryDocuments(USER_ACCOUNTANT_SHARED, ORG_B).length,
+      0,
+      'Removed member must immediately receive 0 rows'
+    );
+
+    // Immediate write revocation
+    assert.throws(
+      () => {
+        db.insertDocument(USER_ACCOUNTANT_SHARED, {
+          id: 'doc-after-revocation',
+          orgId: ORG_B,
+          fileName: 'Forbidden-Post-Revocation.pdf',
         });
       },
       /RLS Violation/i

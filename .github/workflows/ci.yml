@@ -8,8 +8,23 @@ on:
 
 jobs:
   verify:
-    name: Lint, Typecheck, Test & Build
+    name: Lint, Typecheck, Real Postgres Migrations & Tests
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgrespassword
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -30,8 +45,23 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit & Smoke Tests
+      - name: Apply Migrations & Seed to Live Postgres Container
+        env:
+          PGPASSWORD: postgrespassword
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          echo "Applying migrations to real PostgreSQL service..."
+          for file in $(ls -1 supabase/migrations/*.sql | sort); do
+            echo "Executing $file..."
+            psql -h localhost -U postgres -d postgres -f "$file"
+          done
+          echo "Executing seed script..."
+          psql -h localhost -U postgres -d postgres -f supabase/seed.sql
+
+      - name: Run Automated Test Suites
         run: npm test
+        env:
+          DATABASE_URL: postgresql://postgres:postgrespassword@localhost:5432/postgres
 
       - name: Build Production Bundle
         run: npm run build
