@@ -73,4 +73,9 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
     assert.match(combinedSQL, /POLICY "documents_insert_accountant_owner"/i);
     assert.match(combinedSQL, /POLICY "documents_select_all_roles"/i);
   });
+
+  await t.test('Duplicate document constraint and detection function are defined', () => {
+    assert.match(combinedSQL, /CONSTRAINT unique_org_doc_hash UNIQUE \(org_id, content_hash\)/i);
+    assert.match(combinedSQL, /CREATE OR REPLACE FUNCTION check_duplicate_document/i);
+  });
 });
