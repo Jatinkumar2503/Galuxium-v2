@@ -65,4 +65,12 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
       assert.match(combinedSQL, forceRegex, `Table ${table} must force RLS`);
     }
   });
+
+  await t.test('RBAC helper functions and policies are defined for owner, accountant, viewer', () => {
+    assert.match(combinedSQL, /CREATE OR REPLACE FUNCTION auth_org_role/i);
+    assert.match(combinedSQL, /CREATE OR REPLACE FUNCTION is_org_member/i);
+    assert.match(combinedSQL, /POLICY "api_keys_owner_only"/i);
+    assert.match(combinedSQL, /POLICY "documents_insert_accountant_owner"/i);
+    assert.match(combinedSQL, /POLICY "documents_select_all_roles"/i);
+  });
 });
