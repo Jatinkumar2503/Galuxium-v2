@@ -4,6 +4,7 @@ import React from 'react';
 import { Canvas } from '@react-three/fiber';
 import { ContactShadows } from '@react-three/drei';
 import { HeroScene } from './HeroScene';
+import { FloatingLedgerDust } from './FloatingLedgerDust';
 
 interface SceneContainerProps {
   reducedMotion?: boolean;
@@ -28,6 +29,9 @@ export function SceneContainer({ reducedMotion = false }: SceneContainerProps) {
 
       {/* Floating 3D Hero Forms */}
       <HeroScene reducedMotion={reducedMotion} />
+
+      {/* Ambient Archival Gold Particle Dust */}
+      <FloatingLedgerDust count={30} reducedMotion={reducedMotion} />
 
       {/* Subtle Warm Charcoal Contact Shadows */}
       <ContactShadows
