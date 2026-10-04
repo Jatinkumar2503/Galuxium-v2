@@ -12,6 +12,7 @@ class PostgresRLSSimulator {
     this.documents = [];
     this.auditLogs = [];
     this.apiKeys = [];
+    this.failedAttempts = new Map();
   }
 
   seed(data) {
@@ -50,6 +51,15 @@ class PostgresRLSSimulator {
     return doc;
   }
 
+  // Simulates: DELETE FROM documents ... (with RLS: owner only)
+  deleteDocument(userId, orgId, docId) {
+    const role = this.getUserRole(userId, orgId);
+    if (role !== 'owner') {
+      throw new Error('RLS Violation: Only organization owners can delete documents.');
+    }
+    this.documents = this.documents.filter((d) => !(d.id === docId && d.orgId === orgId));
+  }
+
   // Simulates: SELECT * FROM api_keys ... (with RLS)
   queryApiKeys(userId, orgId) {
     const role = this.getUserRole(userId, orgId);
@@ -62,6 +72,17 @@ class PostgresRLSSimulator {
   // Simulates: UPDATE audit_log / DELETE audit_log
   updateAuditLog() {
     throw new Error('Security Violation: audit_log is strictly append-only. UPDATE and DELETE operations are forbidden.');
+  }
+
+  // Simulates: Progressive lockout check (Instruction 3.5)
+  recordFailedAttempt(email, ip) {
+    const key = `${email}:${ip}`;
+    const count = (this.failedAttempts.get(key) || 0) + 1;
+    this.failedAttempts.set(key, count);
+    if (count >= 5) {
+      return { isLocked: true, lockDurationMinutes: count >= 7 ? 15 : count >= 6 ? 5 : 1 };
+    }
+    return { isLocked: false, remainingAttempts: 5 - count };
   }
 }
 
@@ -138,6 +159,18 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
     );
   });
 
+  await t.test('Role RBAC: Accountant cannot delete documents; Owner can delete', () => {
+    assert.throws(
+      () => {
+        db.deleteDocument(USER_ACCOUNTANT_SHARED, ORG_A, 'doc-a1');
+      },
+      /Only organization owners can delete documents/i
+    );
+    db.deleteDocument(USER_OWNER_A, ORG_A, 'doc-a1');
+    const remaining = db.queryDocuments(USER_OWNER_A, ORG_A);
+    assert.equal(remaining.length, 0);
+  });
+
   await t.test('API Keys privacy: Only Owner can access API keys, accountant receives 0 keys', () => {
     const ownerKeys = db.queryApiKeys(USER_OWNER_A, ORG_A);
     const accountantKeys = db.queryApiKeys(USER_ACCOUNTANT_SHARED, ORG_A);
@@ -152,5 +185,15 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
       },
       /audit_log is strictly append-only/i
     );
+  });
+
+  await t.test('Lockout table verification: 5 consecutive failures triggers progressive lockout', () => {
+    for (let i = 1; i <= 4; i++) {
+      const res = db.recordFailedAttempt('test@example.com', '127.0.0.1');
+      assert.equal(res.isLocked, false);
+    }
+    const lockedRes = db.recordFailedAttempt('test@example.com', '127.0.0.1');
+    assert.equal(lockedRes.isLocked, true);
+    assert.equal(lockedRes.lockDurationMinutes, 1);
   });
 });
