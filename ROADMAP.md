@@ -51,9 +51,27 @@
 
 ---
 
+## PHASE 2: Database, Multi-Tenancy, and Row-Level Security (10/10 Complete)
+*Goal: data isolation proven before any feature touches it.*
+
+- [x] 2.1 Design the schema: `organizations`, `memberships`, `clients`, `documents`, `extractions`, `bank_transactions`, `matches`, `flags`, `audit_log`, `usage_events`, `api_keys`.
+- [x] 2.2 Write migrations as versioned SQL files in the repo (no manual dashboard edits).
+- [x] 2.3 Add `org_id` to every tenant table with foreign keys and indexes.
+- [x] 2.4 Enable RLS on **every** table; default deny.
+- [x] 2.5 Write policies by role: owner, accountant, viewer.
+- [x] 2.6 Create the append-only `audit_log` trigger (block UPDATE and DELETE).
+- [x] 2.7 Add a duplicate-detection hash column and unique constraint on `documents`.
+- [x] 2.8 Write a seed script producing two demo orgs plus one accountant managing both.
+- [x] 2.9 Write automated RLS tests: user from Org A must never read or write Org B data.
+- [x] 2.10 Generate TypeScript types from the schema and add an ER diagram to `docs/`.
+
+**Exit Gate:** the RLS test suite passes in CI. Attempting cross-tenant reads through the API returns nothing. Audit log rejects edits. — **PASSED (Verified Oct 05, 2026)**
+
+---
+
 ## Progress Overview
 - [x] Phase 1: Foundation and Project Setup (10/10) — Signed Off
-- [ ] Phase 2: Database, Multi-Tenancy, and Row-Level Security (0/10)
+- [x] Phase 2: Database, Multi-Tenancy, and Row-Level Security (10/10) — Signed Off
 - [ ] Phase 3: Authentication and Session Security (0/10)
 - [ ] Phase 4: Design System and 3D Frontend Shell (0/10)
 - [ ] Phase 5: Document Ingestion and Storage (0/10)
@@ -69,7 +87,7 @@
 | Phase | All 10 done | Exit gate passed | Date |
 |---|---|---|---|
 | 1 | [x] Yes | [x] Yes | Oct 05, 2026 |
-| 2 | [ ] | [ ] | Pending |
+| 2 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 3 | [ ] | [ ] | Pending |
 | 4 | [ ] | [ ] | Pending |
 | 5 | [ ] | [ ] | Pending |
