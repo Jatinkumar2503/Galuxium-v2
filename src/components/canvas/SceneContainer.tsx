@@ -6,6 +6,7 @@ import { ContactShadows } from '@react-three/drei';
 import { HeroScene } from './HeroScene';
 import { FloatingLedgerDust } from './FloatingLedgerDust';
 import { ScrollCameraController } from './ScrollCameraController';
+import { PointerParallaxController } from './PointerParallaxController';
 
 interface SceneContainerProps {
   reducedMotion?: boolean;
@@ -30,6 +31,9 @@ export function SceneContainer({ reducedMotion = false }: SceneContainerProps) {
 
       {/* Scroll-driven fly-through & orbit camera */}
       <ScrollCameraController reducedMotion={reducedMotion} />
+
+      {/* Pointer, touch, and gyroscope tilt parallax */}
+      <PointerParallaxController reducedMotion={reducedMotion} />
 
       {/* Floating 3D Hero Forms */}
       <HeroScene reducedMotion={reducedMotion} />
