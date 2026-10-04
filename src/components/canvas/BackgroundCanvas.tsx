@@ -2,23 +2,40 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { StaticCanvasFallback } from './StaticCanvasFallback';
 
 const CanvasLayer = dynamic(
   () => import('./SceneContainer').then((mod) => mod.SceneContainer),
   {
     ssr: false,
-    loading: () => <div className="fixed inset-0 -z-10 bg-warm-bg" />,
+    loading: () => <StaticCanvasFallback />,
   }
 );
+
+function isWebGLAvailable() {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(
+      window.WebGLRenderingContext &&
+        (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+    );
+  } catch {
+    return false;
+  }
+}
 
 export function BackgroundCanvas() {
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [isTabVisible, setIsTabVisible] = useState(true);
+  const [hasWebGL, setHasWebGL] = useState(true);
   const [adaptiveDpr, setAdaptiveDpr] = useState<[number, number]>([1, 1.5]);
 
   useEffect(() => {
     setMounted(true);
+
+    // 0. Verify WebGL support
+    setHasWebGL(isWebGLAvailable());
 
     // 1. Check reduced motion
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -44,7 +61,12 @@ export function BackgroundCanvas() {
   }, []);
 
   if (!mounted) {
-    return <div className="fixed inset-0 -z-10 bg-warm-bg" />;
+    return <StaticCanvasFallback />;
+  }
+
+  // Non-WebGL graceful fallback
+  if (!hasWebGL) {
+    return <StaticCanvasFallback />;
   }
 
   return (
@@ -52,7 +74,7 @@ export function BackgroundCanvas() {
       aria-hidden="true"
       className="fixed inset-0 -z-10 pointer-events-none overflow-hidden select-none bg-warm-bg"
     >
-      <Suspense fallback={<div className="fixed inset-0 -z-10 bg-warm-bg" />}>
+      <Suspense fallback={<StaticCanvasFallback />}>
         {isTabVisible && (
           <CanvasLayer reducedMotion={reducedMotion} dpr={adaptiveDpr} />
         )}
