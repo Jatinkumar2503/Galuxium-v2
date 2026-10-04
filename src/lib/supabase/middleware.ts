@@ -2,7 +2,9 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 /**
- * Updates the session cookies in the middleware pipeline.
+ * Updates the session cookies with strict security flags:
+ * HttpOnly: true, Secure: true (in production), SameSite: 'lax', path: '/'
+ * Implements token rotation and refresh handling.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -16,6 +18,8 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
+  const isProduction = process.env.NODE_ENV === 'production';
+
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
@@ -26,15 +30,40 @@ export async function updateSession(request: NextRequest) {
         supabaseResponse = NextResponse.next({
           request,
         });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        );
+        cookiesToSet.forEach(({ name, value, options }) => {
+          supabaseResponse.cookies.set(name, value, {
+            ...options,
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: 'lax',
+            path: '/',
+          });
+        });
       },
     },
   });
 
-  // Refresh auth session
-  await supabase.auth.getUser();
+  // Refresh user session with automatic token rotation
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // If unauthenticated access to protected routes, redirect to login
+  const pathname = request.nextUrl.pathname;
+  const isProtectedRoute =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/documents') ||
+    pathname.startsWith('/reconciliation') ||
+    pathname.startsWith('/reports') ||
+    pathname.startsWith('/clients') ||
+    pathname.startsWith('/settings');
+
+  if (isProtectedRoute && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.searchParams.set('next', pathname);
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
