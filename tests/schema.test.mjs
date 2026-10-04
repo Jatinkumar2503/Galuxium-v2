@@ -24,6 +24,8 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
     'api_keys',
   ];
 
+  const allTables = ['organizations', ...tenantTables, 'auth_failed_attempts'];
+
   await t.test('All 10 tenant tables include org_id referencing organizations(id)', () => {
     for (const table of tenantTables) {
       const orgIdRegex = new RegExp(
@@ -53,5 +55,14 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
     assert.match(combinedSQL, /trg_audit_log_immutable/i);
     assert.match(combinedSQL, /block_audit_log_modification/i);
     assert.match(combinedSQL, /BEFORE UPDATE OR DELETE ON audit_log/i);
+  });
+
+  await t.test('Every table has Row-Level Security enabled and forced', () => {
+    for (const table of allTables) {
+      const enableRegex = new RegExp(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`, 'i');
+      const forceRegex = new RegExp(`ALTER TABLE ${table} FORCE ROW LEVEL SECURITY`, 'i');
+      assert.match(combinedSQL, enableRegex, `Table ${table} must enable RLS`);
+      assert.match(combinedSQL, forceRegex, `Table ${table} must force RLS`);
+    }
   });
 });
