@@ -1,6 +1,7 @@
 -- ==============================================================================
 -- Migration: 20261005000006_audit_hash_chain.sql
 -- Description: Automatic SHA-256 cryptographic hash chaining trigger for audit_log
+--              Serialized per organization via PostgreSQL transaction advisory lock
 -- ==============================================================================
 
 CREATE OR REPLACE FUNCTION trg_audit_log_compute_hash()
@@ -9,6 +10,10 @@ DECLARE
     last_hash CHAR(64);
     payload TEXT;
 BEGIN
+    -- Acquire transaction-level advisory lock on the organization's hash ID
+    -- This serializes concurrent audit entries for the same org, preventing chain forks
+    PERFORM pg_advisory_xact_lock(hashtext(NEW.org_id::text));
+
     -- Fetch the previous hash in this organization's ledger chain
     SELECT entry_hash INTO last_hash
     FROM audit_log
