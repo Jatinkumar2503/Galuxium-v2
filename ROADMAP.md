@@ -20,15 +20,21 @@
 - **Border / dividers (Warm sand):** `#D9D0BF`
 - **Primary text (Warm charcoal):** `#2B2824`
 - **Secondary text (Taupe):** `#6E665A`
-- **Accent (Antique gold):** `#B08D57`
-- **Warning / needs review (Amber):** `#C98A2B`
+- **Accent (Antique gold):** `#B08D57` *(Strictly for icons, borders, cards, and large headings. Fails AA contrast 2.8:1 on off-white for body text)*
+- **Warning / needs review (Amber):** `#C98A2B` *(Use as badge/icon with charcoal or bronze text to maintain WCAG AA)*
 - **Error / rejected (Terracotta):** `#B5523B`
-- **Success / matched (Deep bronze + check):** `#8A6A3B`
+- **Success / matched (Deep bronze + check):** `#8A6A3B` *(Passes 4.5:1 AA contrast ratio on off-white)*
+
+---
+
+## Architecture Implementation Notes
+- **Instruction 3.5 (Auth Security):** Supabase Auth lacks native progressive account lockout. Implemented via custom `auth_failed_attempts` table checked before authentication with progressive backoff (1m, 5m, 15m) and Cloudflare Turnstile challenge.
+- **Design Tokens:** Strict WCAG 2.1 AA compliance: `#B08D57` and `#C98A2B` are never used for body or regular UI text against `#F7F4EE`.
 
 ---
 
 ## Progress Overview
-- [ ] Phase 1: Foundation and Project Setup (0/10)
+- [ ] Phase 1: Foundation and Project Setup (5/10)
 - [ ] Phase 2: Database, Multi-Tenancy, and Row-Level Security (0/10)
 - [ ] Phase 3: Authentication and Session Security (0/10)
 - [ ] Phase 4: Design System and 3D Frontend Shell (0/10)
@@ -44,7 +50,7 @@
 ## Phase Sign-Off Log
 | Phase | All 10 done | Exit gate passed | Date |
 |---|---|---|---|
-| 1 | [ ] | [ ] | Pending |
+| 1 | [ ] | [ ] | In Progress |
 | 2 | [ ] | [ ] | Pending |
 | 3 | [ ] | [ ] | Pending |
 | 4 | [ ] | [ ] | Pending |
