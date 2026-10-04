@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { Canvas } from '@react-three/fiber';
+import { ContactShadows } from '@react-three/drei';
 import { HeroScene } from './HeroScene';
 
 interface SceneContainerProps {
@@ -11,7 +12,7 @@ interface SceneContainerProps {
 export function SceneContainer({ reducedMotion = false }: SceneContainerProps) {
   return (
     <Canvas
-      camera={{ position: [0, 0, 7], fov: 45 }}
+      camera={{ position: [0, 0, 7.5], fov: 42 }}
       dpr={[1, 1.5]}
       gl={{
         antialias: true,
@@ -21,11 +22,22 @@ export function SceneContainer({ reducedMotion = false }: SceneContainerProps) {
       className="w-full h-full"
     >
       {/* Strictly Warm Lighting: Off-white ambient, cream key, and antique gold rim light */}
-      <ambientLight color="#F7F4EE" intensity={0.8} />
-      <directionalLight position={[5, 8, 5]} color="#F3EBD8" intensity={1.2} />
-      <pointLight position={[-6, -4, -2]} color="#B08D57" intensity={0.6} />
+      <ambientLight color="#F7F4EE" intensity={0.75} />
+      <directionalLight position={[6, 9, 5]} color="#F3EBD8" intensity={1.1} />
+      <pointLight position={[-5, -3, 2]} color="#B08D57" intensity={0.5} distance={15} />
 
+      {/* Floating 3D Hero Forms */}
       <HeroScene reducedMotion={reducedMotion} />
+
+      {/* Subtle Warm Charcoal Contact Shadows */}
+      <ContactShadows
+        position={[0, -2.8, 0]}
+        opacity={0.3}
+        scale={14}
+        blur={2.4}
+        far={5}
+        color="#2B2824"
+      />
     </Canvas>
   );
 }
