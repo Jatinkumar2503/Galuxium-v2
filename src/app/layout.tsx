@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { BackgroundCanvas } from '@/components/canvas/BackgroundCanvas';
+import { ToastProvider } from '@/components/ui/Toast';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -19,11 +20,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full bg-warm-bg text-warm-charcoal antialiased">
       <body className="min-h-full flex flex-col font-sans selection:bg-warm-accent/20 selection:text-warm-charcoal relative">
-        {/* Persistent 3D Canvas Layer */}
-        <BackgroundCanvas />
+        <ToastProvider>
+          {/* Persistent 3D Canvas Layer */}
+          <BackgroundCanvas />
 
-        {/* Foreground Content */}
-        <div className="relative z-10 min-h-screen flex flex-col">{children}</div>
+          {/* Foreground Content */}
+          <div className="relative z-10 min-h-screen flex flex-col">{children}</div>
+        </ToastProvider>
       </body>
     </html>
   );
