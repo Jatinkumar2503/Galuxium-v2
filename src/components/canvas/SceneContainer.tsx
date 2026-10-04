@@ -10,13 +10,17 @@ import { PointerParallaxController } from './PointerParallaxController';
 
 interface SceneContainerProps {
   reducedMotion?: boolean;
+  dpr?: [number, number];
 }
 
-export function SceneContainer({ reducedMotion = false }: SceneContainerProps) {
+export function SceneContainer({
+  reducedMotion = false,
+  dpr = [1, 1.5],
+}: SceneContainerProps) {
   return (
     <Canvas
       camera={{ position: [0, 0, 7.5], fov: 42 }}
-      dpr={[1, 1.5]}
+      dpr={dpr}
       gl={{
         antialias: true,
         alpha: true,
