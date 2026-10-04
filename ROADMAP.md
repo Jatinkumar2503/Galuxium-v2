@@ -30,6 +30,7 @@
 ## Architecture Implementation Notes
 - **Instruction 3.5 (Auth Security):** Supabase Auth lacks native progressive account lockout. Implemented via custom `auth_failed_attempts` table checked before authentication with progressive backoff (1m, 5m, 15m) and Cloudflare Turnstile challenge.
 - **Design Tokens:** Strict WCAG 2.1 AA compliance: `#B08D57` and `#C98A2B` are never used for body or regular UI text against `#F7F4EE`.
+- **Phase 5 Pre-Requisite (Storage):** Supabase Storage buckets are not covered by table RLS; dedicated `storage.objects` policies with `org_id` prefix isolation are documented in ADR 006.
 
 ---
 
@@ -69,10 +70,28 @@
 
 ---
 
+## PHASE 3: Authentication and Session Security (10/10 Complete)
+*Goal: secure sign-in with Google and email/password, with login limits.*
+
+- [x] 3.1 Enable Google OAuth (Supabase Auth) with a correctly configured consent screen and exact redirect URIs for local, preview, and production.
+- [x] 3.2 Enable email + password sign-up with email verification required before access.
+- [x] 3.3 Enforce password policy: minimum 12 characters, check against a breached-password list, no composition gimmicks.
+- [x] 3.4 Build sign-up, login, logout, forgot-password, and reset-password flows with clear, non-leaking error messages ("Invalid email or password").
+- [x] 3.5 Login rate limiting: max 5 failed attempts per account + IP per 15 minutes, then progressive lockout (1 min, 5 min, 15 min), plus a bot challenge (e.g., Turnstile) after 3 failures. Add a separate IP-level limit on sign-up and reset requests.
+- [x] 3.6 Use secure session cookies: `HttpOnly`, `Secure`, `SameSite=Lax`; short-lived access token with refresh rotation.
+- [x] 3.7 Account linking: the same verified email via Google and password resolves to one account, never two.
+- [x] 3.8 Route protection: middleware guards all app routes; role checks happen on the server, never only in the UI.
+- [x] 3.9 Log auth events (login, failure, lockout, password change, new device) to the audit log, and show "recent activity" to the user.
+- [x] 3.10 Optional but recommended: TOTP two-factor authentication for owner and accountant roles; add a "sign out of all devices" button.
+
+**Exit Gate:** you can register by Google and by email, verify, log in, log out, and reset a password. Six wrong passwords trigger lockout. An unauthenticated request to any protected route is rejected. — **PASSED (Verified Oct 05, 2026)**
+
+---
+
 ## Progress Overview
 - [x] Phase 1: Foundation and Project Setup (10/10) — Signed Off
 - [x] Phase 2: Database, Multi-Tenancy, and Row-Level Security (10/10) — Signed Off
-- [ ] Phase 3: Authentication and Session Security (0/10)
+- [x] Phase 3: Authentication and Session Security (10/10) — Signed Off
 - [ ] Phase 4: Design System and 3D Frontend Shell (0/10)
 - [ ] Phase 5: Document Ingestion and Storage (0/10)
 - [ ] Phase 6: Extraction Pipeline (Queue + AI) (0/10)
@@ -88,7 +107,7 @@
 |---|---|---|---|
 | 1 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 2 | [x] Yes | [x] Yes | Oct 05, 2026 |
-| 3 | [ ] | [ ] | Pending |
+| 3 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 4 | [ ] | [ ] | Pending |
 | 5 | [ ] | [ ] | Pending |
 | 6 | [ ] | [ ] | Pending |
