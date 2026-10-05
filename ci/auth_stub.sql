@@ -33,7 +33,7 @@ AS $$
     nullif((CASE WHEN current_setting('request.jwt.claims', true) IS NOT NULL AND current_setting('request.jwt.claims', true) != '' 
             THEN (current_setting('request.jwt.claims', true)::jsonb ->> 'sub') 
             ELSE NULL END), ''),
-    (SELECT id FROM auth.users LIMIT 1)
+    (SELECT id::text FROM auth.users LIMIT 1)
   )::uuid;
 $$;
 
