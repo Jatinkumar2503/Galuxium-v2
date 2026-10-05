@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { validatePassword } from '../src/lib/auth/password-policy.ts';
 
 test('Password Policy & Breached List Verification', async (t) => {
-  await t.test('Rejects passwords under 12 characters', () => {
-    const resShort = validatePassword('ShortPass1!'); // 11 chars
+  await t.test('Rejects passwords under 8 characters', () => {
+    const resShort = validatePassword('Pass123'); // 7 chars
     assert.equal(resShort.isValid, false);
-    assert.match(resShort.error, /at least 12 characters/i);
+    assert.match(resShort.error, /at least 8 characters/i);
   });
 
   await t.test('Accepts strong multi-word passphrases without composition gimmicks', () => {

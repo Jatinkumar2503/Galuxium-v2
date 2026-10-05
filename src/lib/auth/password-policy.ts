@@ -27,15 +27,15 @@ export interface PasswordValidationResult {
 
 /**
  * Validates a proposed password against Galuxium Nexus V2 security policy:
- * 1. Minimum 12 characters.
+ * 1. Minimum 8 characters (aligned with Google identity standard).
  * 2. Breached password blacklist rejection.
  * 3. No composition gimmicks.
  */
 export function validatePassword(password: string): PasswordValidationResult {
-  if (!password || password.length < 12) {
+  if (!password || password.length < 8) {
     return {
       isValid: false,
-      error: 'Password must be at least 12 characters long.',
+      error: 'Password must be at least 8 characters long.',
     };
   }
 
