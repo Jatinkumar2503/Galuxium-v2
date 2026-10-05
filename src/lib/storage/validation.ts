@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { PDFDocument } from 'pdf-lib';
 import sharp from 'sharp';
+import convert from 'heic-convert';
 
 export interface FileValidationResult {
   isValid: boolean;
@@ -114,12 +115,75 @@ export function detectTypeFromMagicBytes(buffer: Buffer): { mime: string; ext: s
 }
 
 /**
+ * Dedicated server-side CSV validator (Section 3.2).
+ * Verifies UTF-8 decoding, lack of NUL bytes, header column count >= 3, and <= 50,000 rows.
+ */
+export function validateCsv(
+  buffer: Buffer
+): { isValid: boolean; error?: string; rowCount?: number } {
+  // 1. Check for NUL bytes (corrupted binary or executable)
+  if (buffer.includes(0x00)) {
+    return {
+      isValid: false,
+      error: 'CSV file contains forbidden null bytes (binary or corrupted file detected).',
+    };
+  }
+
+  // 2. Strict UTF-8 validation
+  let text = '';
+  try {
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    text = decoder.decode(buffer);
+  } catch {
+    return {
+      isValid: false,
+      error: 'CSV file is not valid UTF-8 text.',
+    };
+  }
+
+  // 3. Row count and column count validation
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length === 0) {
+    return {
+      isValid: false,
+      error: 'CSV file is empty.',
+    };
+  }
+
+  const rowCount = lines.length;
+  if (rowCount > 50000) {
+    return {
+      isValid: false,
+      error: `CSV file contains ${rowCount.toLocaleString()} rows, exceeding maximum allowed limit of 50,000 rows.`,
+      rowCount,
+    };
+  }
+
+  const header = lines[0];
+  const cols = header.split(/[,\t;|]/);
+  if (cols.length < 3) {
+    return {
+      isValid: false,
+      error: `CSV header row contains only ${cols.length} column(s). At least 3 columns are required for bank statements.`,
+      rowCount,
+    };
+  }
+
+  return {
+    isValid: true,
+    rowCount,
+  };
+}
+
+/**
  * Validates a PDF file against security constraints (Section 3.4).
+ * NOTE: Raw token scanning for /JavaScript, /JS, /Launch, /EmbeddedFile is a fast heuristic
+ * pre-filter against known injection vectors, not a full anti-malware engine (see ADR-005).
  */
 export async function validatePdf(
   buffer: Buffer
 ): Promise<{ isValid: boolean; error?: string; pageCount?: number }> {
-  // Heuristic token scan for dangerous elements
+  // Heuristic token scan for dangerous elements in raw streams
   const rawString = buffer.toString('latin1');
   const forbiddenTokens = ['/JavaScript', '/JS', '/Launch', '/EmbeddedFile'];
   for (const token of forbiddenTokens) {
@@ -173,12 +237,33 @@ export async function validatePdf(
 
 /**
  * Validates an image file, guards against decompression bombs, and strips EXIF/GPS (Section 3.5).
+ * Automatically converts HEIC/HEIF images from iPhones to standard raster buffers before processing.
  */
 export async function validateAndCleanImage(
-  buffer: Buffer
+  buffer: Buffer,
+  isHeic: boolean = false
 ): Promise<{ isValid: boolean; error?: string; cleanedBuffer?: Buffer }> {
   try {
-    const image = sharp(buffer);
+    let processBuffer = buffer;
+
+    // Convert iPhone HEIC/HEIF to JPEG buffer if detected
+    if (isHeic) {
+      try {
+        const converted = await convert({
+          buffer,
+          format: 'JPEG',
+          quality: 0.95,
+        });
+        processBuffer = Buffer.from(converted);
+      } catch (convErr: unknown) {
+        return {
+          isValid: false,
+          error: `Could not decode HEIC image: ${convErr instanceof Error ? convErr.message : 'Corrupted or unsupported HEIC data'}`,
+        };
+      }
+    }
+
+    const image = sharp(processBuffer);
     const metadata = await image.metadata();
 
     if (!metadata.width || !metadata.height) {
@@ -195,7 +280,7 @@ export async function validateAndCleanImage(
     }
 
     // Auto-orient and strip all EXIF/GPS metadata from the working copy
-    const cleaned = await sharp(buffer)
+    const cleaned = await sharp(processBuffer)
       .rotate() // auto-orient based on EXIF before stripping
       .toBuffer(); // Sharp strips all EXIF/GPS/IPTC metadata by default unless withMetadata is called
 
@@ -271,9 +356,10 @@ export async function validateFinalObject(params: {
     pageCount = pdfRes.pageCount;
   }
 
-  // 5. Image specific checks (JPEG, PNG, HEIC)
-  if (['image/jpeg', 'image/png', 'image/heic'].includes(detected.mime)) {
-    const imgRes = await validateAndCleanImage(buffer);
+  // 5. Image specific checks (JPEG, PNG, HEIC, HEIF)
+  if (['image/jpeg', 'image/png', 'image/heic', 'image/heif'].includes(detected.mime)) {
+    const isHeic = detected.mime === 'image/heic' || detected.mime === 'image/heif';
+    const imgRes = await validateAndCleanImage(buffer, isHeic);
     if (!imgRes.isValid) {
       return {
         isValid: false,
@@ -282,6 +368,17 @@ export async function validateFinalObject(params: {
     }
     if (imgRes.cleanedBuffer) {
       cleanedBuffer = imgRes.cleanedBuffer;
+    }
+  }
+
+  // 6. CSV specific checks (Section 3.2: UTF-8, no NUL, header >= 3 cols, rows <= 50,000)
+  if (detected.mime === 'text/csv') {
+    const csvRes = validateCsv(buffer);
+    if (!csvRes.isValid) {
+      return {
+        isValid: false,
+        error: csvRes.error,
+      };
     }
   }
 
