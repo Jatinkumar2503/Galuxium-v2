@@ -104,8 +104,6 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
       const { Client } = await import('pg');
       const client = new Client({ connectionString: process.env.DATABASE_URL });
       await client.connect();
-      // Disable row_security for table-level check constraint testing as superuser
-      await client.query('SET row_security = off');
 
       try {
         let orgRes = await client.query('SELECT id FROM organizations LIMIT 1');
@@ -217,7 +215,6 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
       const { Client } = await import('pg');
       const client = new Client({ connectionString: process.env.DATABASE_URL });
       await client.connect();
-      await client.query('SET row_security = off');
       try {
         const checkRes = await client.query(
           "SELECT conname FROM pg_constraint WHERE conname = 'check_validated_complete'"

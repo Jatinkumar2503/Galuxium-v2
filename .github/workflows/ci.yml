@@ -50,6 +50,8 @@ jobs:
           PGPASSWORD: postgrespassword
         run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
+          echo "Applying CI auth stub..."
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f ci/auth_stub.sql
           echo "Applying migrations to real PostgreSQL service..."
           for file in $(ls -1 supabase/migrations/*.sql | sort); do
             echo "Executing $file..."

@@ -672,7 +672,6 @@ ALTER TABLE public.documents
   DROP COLUMN IF EXISTS storage_path;
 
 -- Clean up any invalid or abandoned dev test rows that have NULL in mandatory columns before enforcing NOT NULL
-SET row_security = off;
 DELETE FROM public.documents
 WHERE file_path IS NULL OR file_name IS NULL OR mime_type IS NULL OR file_size_bytes IS NULL;
 
