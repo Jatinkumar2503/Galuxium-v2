@@ -25,8 +25,8 @@ DECLARE
     doc_b1 UUID := 'db111111-1111-1111-1111-111111111111';
 
     -- Transaction IDs
-    tx_a1 UUID := 'ta111111-1111-1111-1111-111111111111';
-    tx_b1 UUID := 'tb111111-1111-1111-1111-111111111111';
+    tx_a1 UUID := 'fa111111-1111-1111-1111-111111111111';
+    tx_b1 UUID := 'fb111111-1111-1111-1111-111111111111';
 BEGIN
     -- 1. Create Organizations
     INSERT INTO organizations (id, name, slug, gstin, pan, plan)
