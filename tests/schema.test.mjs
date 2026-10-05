@@ -92,7 +92,14 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
       'check_validated_complete must enforce content_hash IS NOT NULL on validated documents'
     );
 
-    // 2. If live PostgreSQL connection string is available (e.g. CI pipeline)
+    // 2. In CI environment, DATABASE_URL is strictly required to test against live Postgres
+    if (process.env.CI) {
+      assert.ok(
+        process.env.DATABASE_URL,
+        'DATABASE_URL must be defined when running in CI to execute real PostgreSQL constraint validation'
+      );
+    }
+
     if (process.env.DATABASE_URL) {
       const { Client } = await import('pg');
       const client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -189,7 +196,14 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
       'idx_audit_log_actor_action_created index must be defined'
     );
 
-    // 3. If live PostgreSQL is connected, verify that all migrations applied cleanly without errors
+    // 3. In CI environment, DATABASE_URL is strictly required to test migration application
+    if (process.env.CI) {
+      assert.ok(
+        process.env.DATABASE_URL,
+        'DATABASE_URL must be defined when running in CI to verify clean migration application against PostgreSQL'
+      );
+    }
+
     if (process.env.DATABASE_URL) {
       const { Client } = await import('pg');
       const client = new Client({ connectionString: process.env.DATABASE_URL });
