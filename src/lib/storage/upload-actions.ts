@@ -8,8 +8,7 @@ import {
   validateFinalObject,
   sanitizeFilename,
 } from './validation';
-import { checkUploadRateLimit, checkUploadRateLimitDurable, rateTracker } from './rate-limit';
-export { checkUploadRateLimit, checkUploadRateLimitDurable, rateTracker };
+import { checkUploadRateLimitDurable } from './rate-limit';
 
 export interface RequestUploadParams {
   orgId: string;

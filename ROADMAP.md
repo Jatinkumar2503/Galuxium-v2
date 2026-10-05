@@ -67,7 +67,7 @@
 - [x] 2.9 Write automated RLS tests: user from Org A must never read or write Org B data, viewer cannot write, removed member immediately revoked.
 - [x] 2.10 Generate TypeScript types from the schema and add an ER diagram to `docs/`.
 
-**Exit Gate:** the RLS test suite passes in CI with real Postgres. Attempting cross-tenant reads through the API returns nothing. Audit log rejects edits. — **PASSED (Verified Oct 05, 2026)**
+**Exit Gate:** the RLS test suite passes in CI with real Postgres. Attempting cross-tenant reads through the API returns nothing. Audit log rejects edits. — *REOPENED: Upgraded to execute against live PostgreSQL in CI via authenticated role session; pending green CI verification*
 
 ---
 
