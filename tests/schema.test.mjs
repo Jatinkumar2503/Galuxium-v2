@@ -108,8 +108,15 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
       await client.query('SET row_security = off');
 
       try {
-        const orgRes = await client.query('SELECT id FROM organizations LIMIT 1');
-        const orgId = orgRes.rows[0]?.id;
+        let orgRes = await client.query('SELECT id FROM organizations LIMIT 1');
+        let orgId = orgRes.rows[0]?.id;
+        if (!orgId) {
+          orgId = crypto.randomUUID();
+          await client.query(
+            "INSERT INTO organizations (id, name, slug, plan) VALUES ($1, 'CI Test Org', $2, 'free')",
+            [orgId, `ci-org-${Date.now()}`]
+          );
+        }
         assert.ok(orgId, 'Must have at least one test organization in database');
 
         const testDocId1 = crypto.randomUUID();

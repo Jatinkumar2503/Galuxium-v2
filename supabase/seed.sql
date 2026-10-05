@@ -28,6 +28,15 @@ DECLARE
     tx_a1 UUID := 'ta111111-1111-1111-1111-111111111111';
     tx_b1 UUID := 'tb111111-1111-1111-1111-111111111111';
 BEGIN
+    -- 0. Create Auth Users (for foreign key satisfaction in raw Postgres CI)
+    INSERT INTO auth.users (id, email)
+    VALUES
+        (user_owner_a, 'owner-a@bharat-electronics.in'),
+        (user_owner_b, 'owner-b@deccan-logistics.in'),
+        (user_accountant, 'accountant@ca-sharma.in'),
+        (user_viewer_a, 'auditor@audit-india.in')
+    ON CONFLICT (id) DO NOTHING;
+
     -- 1. Create Organizations
     INSERT INTO organizations (id, name, slug, gstin, pan, plan)
     VALUES

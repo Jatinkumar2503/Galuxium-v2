@@ -53,10 +53,10 @@ jobs:
           echo "Applying migrations to real PostgreSQL service..."
           for file in $(ls -1 supabase/migrations/*.sql | sort); do
             echo "Executing $file..."
-            psql -h localhost -U postgres -d postgres -f "$file"
+            psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f "$file"
           done
           echo "Executing seed script..."
-          psql -h localhost -U postgres -d postgres -f supabase/seed.sql
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/seed.sql
 
       - name: Run Automated Test Suites
         run: npm test
