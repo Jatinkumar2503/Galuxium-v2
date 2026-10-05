@@ -107,13 +107,13 @@
 
 ---
 
-## PHASE 5: Document Ingestion and Storage (0/10)
+## PHASE 5: Document Ingestion and Storage (4/10)
 *Goal: files go in safely and reliably.*
 
-- [ ] 5.1 Build drag-and-drop and camera/photo upload for PDF, JPG, PNG, and HEIC.
-- [ ] 5.2 Build bank statement CSV import with column mapping and a preview step.
-- [ ] 5.3 Store files in private Supabase Storage buckets with per-org path prefixes and storage RLS.
-- [ ] 5.4 Validate server-side: file type by magic bytes (not extension), size limit (e.g., 10MB), page limit.
+- [x] 5.1 Build drag-and-drop and camera/photo upload for PDF, JPG, PNG, and HEIC.
+- [x] 5.2 Build bank statement CSV import with column mapping and a preview step.
+- [x] 5.3 Store files in private Supabase Storage buckets with per-org path prefixes and storage RLS.
+- [x] 5.4 Validate server-side: file type by magic bytes (not extension), size limit (e.g., 10MB), page limit.
 - [ ] 5.5 Compute a content hash and block exact duplicate uploads, with a clear message.
 - [ ] 5.6 Virus/malware scanning (e.g., ClamAV service or a scanning API) before a file is processed.
 - [ ] 5.7 Use signed, short-lived URLs for viewing files; never expose public URLs.
@@ -220,7 +220,7 @@
 - [x] Phase 2: Database, Multi-Tenancy, and Row-Level Security (10/10) — Signed Off
 - [x] Phase 3: Authentication and Session Security (10/10) — Signed Off
 - [x] Phase 4: Design System and 3D Frontend Shell (10/10) — Signed Off
-- [ ] Phase 5: Document Ingestion and Storage (0/10)
+- [ ] Phase 5: Document Ingestion and Storage (4/10)
 - [ ] Phase 6: Extraction Pipeline (Queue + AI) (0/10)
 - [ ] Phase 7: Matching Engine, Flags, and Review Queue (0/10)
 - [ ] Phase 8: Audit Trail, Compliance, Reports, and Exports (0/10)
