@@ -3,6 +3,9 @@
 -- Description: Realistic Indian SME seed dataset with 2 orgs and 1 shared accountant
 -- ==============================================================================
 
+-- Disable row_security during seed insertion so superuser can seed across organizations
+SET row_security = off;
+
 -- Static UUIDs for deterministic testing and foreign key linking
 DO $$
 DECLARE

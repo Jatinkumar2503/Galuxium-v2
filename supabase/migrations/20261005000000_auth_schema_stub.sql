@@ -4,6 +4,9 @@
 --              In managed Supabase environments, auth schema already exists (idempotent NO-OP).
 -- ==============================================================================
 
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 CREATE SCHEMA IF NOT EXISTS auth;
 
 CREATE TABLE IF NOT EXISTS auth.users (
