@@ -51,7 +51,7 @@
   1. `requestUploadAction`: Verifies org membership role (`owner` or `accountant`), rate limits, allow-list, generates `crypto.randomUUID()`, reserves `pending_validation` row, and issues a session-scoped signed upload URL.
   2. Browser uploads directly to Supabase Storage with `upsert: false`.
   3. `finalizeUploadAction`: Server reads stored binary and executes strict sequential validation (Size $\rightarrow$ Magic bytes $\rightarrow$ Declared vs Detected type $\rightarrow$ PDF security heuristics $\rightarrow$ Sharp decompression bomb & EXIF strip $\rightarrow$ SHA-256 duplicate detection $\rightarrow$ Filename sanitization).
-  4. Scheduled hourly cron job (`/api/cron/cleanup-uploads`) sweeps rows in `pending_validation` older than 1 hour.
+  4. Scheduled daily cron job at 02:00 UTC (`/api/cron/cleanup-uploads`, schedule `0 2 * * *` per Vercel Hobby plan daily restriction) sweeps rows in `pending_validation` older than 1 hour.
 
 ## ADR 008: Malware Scanning Gap & PDF Heuristic Pre-Filtering (Phase 5.6)
 - **Status:** Accepted (Documented Known Gap)
@@ -61,4 +61,13 @@
   2. Implement an in-memory heuristic token scanner for PDFs checking uncompressed byte sequences for `/JavaScript`, `/JS`, `/Launch`, and `/EmbeddedFile`.
   3. **Explicit Heuristic Limitation:** Raw token scanning does not detect active content hidden inside compressed FlateDecode streams or advanced PDF obfuscation. It serves solely as a fast, first-line hygiene filter before vision model ingestion.
   4. **Future Roadmap:** Route finalized files to an asynchronous queue (Phase 6) that calls an external scanning API (e.g. VirusTotal or an AWS S3 ClamAV Lambda sidecar) before extraction.
+
+## ADR 009: Durable Rate Limiting, Indexing & Fail-Open Resilience Strategy
+- **Status:** Accepted
+- **Context:** Serverless functions are stateless and scale across multiple edge instances. In-memory rate limiting does not prevent distributed quota abuse. At the same time, as `audit_log` grows, count queries without indexes will degrade latency.
+- **Decision:**
+  1. **PostgreSQL-Backed Count Queries:** `checkUploadRateLimitDurable` queries `audit_log` records: actor upload count over the last 10 minutes (limit 30) and org upload count over the last 24 hours (limit 200).
+  2. **Composite Indexes:** Backed by `idx_audit_log_org_action_created ON audit_log (org_id, action, created_at)` and `idx_audit_log_actor_action_created ON audit_log (actor_id, action, created_at)` created in migration `20261005000009`.
+  3. **Fail-Open Strategy:** If the database query times out or fails, the rate limiter catches the exception and falls back to the in-memory counter (`checkUploadRateLimit`). This guarantees document ingestion remains available during transient database degradation.
+  4. **Cron Security:** In production, `/api/cron/cleanup-uploads` fails closed (401 Unauthorized) if `CRON_SECRET` is unset or mismatched. Schedule is set to `0 2 * * *` (once daily) to comply with Vercel Hobby limits.
 

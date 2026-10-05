@@ -57,6 +57,18 @@ export function checkUploadRateLimit(
 /**
  * Serverless-durable rate limit checker backed by PostgreSQL audit_log (Section 4 & 5.10).
  * Survives serverless cold starts and multi-instance concurrency across edge workers.
+ *
+ * Query Performance & Indexing:
+ * - Backed by composite B-Tree indexes on public.audit_log:
+ *   (org_id, action, created_at) and (actor_id, action, created_at).
+ *
+ * Trade-Off & Failure Mode (Fail-Open):
+ * - If the PostgreSQL query errors, times out, or the database is unreachable,
+ *   this function catches the error and falls back to the in-memory counter (`checkUploadRateLimit`).
+ * - In-memory counters are local to the current serverless instance and do NOT sync across workers.
+ * - This fail-open design intentionally prioritizes system availability and user upload capability
+ *   during transient database blips, accepting that multi-instance burst rate limits may temporarily
+ *   relax until database connectivity recovers.
  */
 export async function checkUploadRateLimitDurable(
   userId: string,

@@ -374,8 +374,8 @@ test('Phase 5: Document Ingestion, Storage Policies, and Finalize Validation Tes
     const tenMinutesAgo = new Date(now - 10 * 60 * 1000).toISOString();
 
     const mockDocs = [
-      { id: 'doc-abandoned', status: 'pending_validation', created_at: oneHourAndFiveMinutesAgo, storage_path: 'org/doc-abandoned/original.pdf' },
-      { id: 'doc-active', status: 'pending_validation', created_at: tenMinutesAgo, storage_path: 'org/doc-active/original.pdf' },
+      { id: 'doc-abandoned', status: 'pending_validation', created_at: oneHourAndFiveMinutesAgo, file_path: 'org/doc-abandoned/original.pdf' },
+      { id: 'doc-active', status: 'pending_validation', created_at: tenMinutesAgo, file_path: 'org/doc-active/original.pdf' },
     ];
 
     const oneHourCutoff = new Date(now - 60 * 60 * 1000).toISOString();
@@ -592,7 +592,7 @@ test('Phase 5: Document Ingestion, Storage Policies, and Finalize Validation Tes
     assert.ok(vercelConfig.crons, 'vercel.json must define crons schedule');
     const cleanupCron = vercelConfig.crons.find((c) => c.path === '/api/cron/cleanup-uploads');
     assert.ok(cleanupCron, 'Cleanup cron path must be /api/cron/cleanup-uploads');
-    assert.equal(cleanupCron.schedule, '0 * * * *', 'Schedule must run hourly (0 * * * *)');
+    assert.equal(cleanupCron.schedule, '0 2 * * *', 'Schedule must run daily at 02:00 UTC (0 2 * * *) per Vercel Hobby limits');
   });
 
   // --------------------------------------------------------------------------

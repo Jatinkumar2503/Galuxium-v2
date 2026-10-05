@@ -10,11 +10,19 @@ export const dynamic = 'force-dynamic';
  * for any row still in 'pending_validation' after 1 hour.
  */
 export async function GET(req: NextRequest) {
-  // Verify Vercel Cron Secret (if configured)
+  // Verify Vercel Cron Secret (fail closed in production)
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
+  const isDev = process.env.NODE_ENV === 'development';
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!isDev) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        { error: 'Unauthorized: invalid or unconfigured CRON_SECRET.' },
+        { status: 401 }
+      );
+    }
+  } else if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json(
       { error: 'Unauthorized cron invocation.' },
       { status: 401 }

@@ -115,8 +115,10 @@ export async function requestUploadAction(params: RequestUploadParams): Promise<
     id: documentId,
     org_id: orgId,
     status: 'pending_validation',
-    original_filename: sanitizedName,
-    storage_path: storagePath,
+    file_name: sanitizedName,
+    file_path: storagePath,
+    mime_type: declaredMimeType,
+    file_size_bytes: declaredSizeBytes,
     uploaded_by: user.id,
   });
 
@@ -262,7 +264,7 @@ export async function finalizeUploadAction(params: FinalizeUploadParams): Promis
   // Check duplicate hash constraint (Section 3.6)
   const { data: existingDoc } = await supabase
     .from('documents')
-    .select('id, original_filename, created_at')
+    .select('id, file_name, created_at')
     .eq('org_id', orgId)
     .eq('content_hash', validation.contentHash!)
     .neq('id', documentId)
@@ -315,7 +317,7 @@ export async function finalizeUploadAction(params: FinalizeUploadParams): Promis
       mime_type: validation.detectedMime,
       file_path: storagePath,
       file_name: validation.sanitizedFilename,
-      size_bytes: buffer.length,
+      file_size_bytes: buffer.length,
       page_count: validation.pageCount || null,
       content_hash: validation.contentHash,
       scan_status: 'skipped', // Per Section 6: record skipped
@@ -400,17 +402,17 @@ export async function getSignedDocumentUrlAction(params: {
   // Query document storage path
   const { data: doc, error: docError } = await supabase
     .from('documents')
-    .select('storage_path, original_filename')
+    .select('file_path, file_name')
     .eq('id', documentId)
     .eq('org_id', orgId)
     .single();
 
-  if (docError || !doc?.storage_path) {
+  if (docError || !doc?.file_path) {
     return { success: false, error: 'Document not found.' };
   }
 
-  const { data, error } = await supabase.storage.from('documents').createSignedUrl(doc.storage_path, 300, {
-    download: isDownload ? doc.original_filename || true : false,
+  const { data, error } = await supabase.storage.from('documents').createSignedUrl(doc.file_path, 300, {
+    download: isDownload ? doc.file_name || true : false,
   });
 
   if (error || !data) {
@@ -430,7 +432,7 @@ export async function cleanupAbandonedUploadsAction(): Promise<{ cleanedCount: n
 
   const { data: abandonedDocs } = await admin
     .from('documents')
-    .select('id, org_id, storage_path')
+    .select('id, org_id, file_path')
     .eq('status', 'pending_validation')
     .lt('created_at', oneHourAgo);
 
@@ -438,7 +440,7 @@ export async function cleanupAbandonedUploadsAction(): Promise<{ cleanedCount: n
     return { cleanedCount: 0 };
   }
 
-  const pathsToDelete = abandonedDocs.map((d) => d.storage_path).filter(Boolean) as string[];
+  const pathsToDelete = abandonedDocs.map((d) => d.file_path).filter(Boolean) as string[];
   if (pathsToDelete.length > 0) {
     await admin.storage.from('documents').remove(pathsToDelete);
   }
