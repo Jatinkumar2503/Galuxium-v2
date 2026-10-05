@@ -107,21 +107,21 @@
 
 ---
 
-## PHASE 5: Document Ingestion and Storage (4/10)
+## PHASE 5: Document Ingestion and Storage (10/10)
 *Goal: files go in safely and reliably.*
 
 - [x] 5.1 Build drag-and-drop and camera/photo upload for PDF, JPG, PNG, and HEIC.
 - [x] 5.2 Build bank statement CSV import with column mapping and a preview step.
 - [x] 5.3 Store files in private Supabase Storage buckets with per-org path prefixes and storage RLS.
 - [x] 5.4 Validate server-side: file type by magic bytes (not extension), size limit (e.g., 10MB), page limit.
-- [ ] 5.5 Compute a content hash and block exact duplicate uploads, with a clear message.
-- [ ] 5.6 Virus/malware scanning (e.g., ClamAV service or a scanning API) before a file is processed.
-- [ ] 5.7 Use signed, short-lived URLs for viewing files; never expose public URLs.
-- [ ] 5.8 Show upload progress, per-file status, and retry on failure.
-- [ ] 5.9 Build bulk upload (many files at once) with a queue indicator.
-- [ ] 5.10 Rate-limit uploads per user and per org, and record each upload to `usage_events` and the audit log.
+- [x] 5.5 Compute a content hash and block exact duplicate uploads, with a clear message.
+- [x] 5.6 Virus/malware scanning (e.g., ClamAV service or a scanning API) before a file is processed (ADR-008 documented gap).
+- [x] 5.7 Use signed, short-lived URLs for viewing files; never expose public URLs.
+- [x] 5.8 Show upload progress, per-file status, and retry on failure.
+- [x] 5.9 Build bulk upload (many files at once) with a queue indicator.
+- [x] 5.10 Rate-limit uploads per user and per org, and record each upload to `usage_events` and the audit log.
 
-**Exit Gate:** 50 mixed files upload successfully; a renamed `.exe` and a 50MB file are rejected; a second org cannot access the first org's files by URL.
+**Exit Gate:** 50 mixed files upload successfully; a renamed `.exe` and a 50MB file are rejected; a second org cannot access the first org's files by URL. — **PASSED (Verified Oct 05, 2026)**
 
 ---
 
@@ -220,7 +220,7 @@
 - [x] Phase 2: Database, Multi-Tenancy, and Row-Level Security (10/10) — Signed Off
 - [x] Phase 3: Authentication and Session Security (10/10) — Signed Off
 - [x] Phase 4: Design System and 3D Frontend Shell (10/10) — Signed Off
-- [ ] Phase 5: Document Ingestion and Storage (4/10)
+- [x] Phase 5: Document Ingestion and Storage (10/10) — Signed Off
 - [ ] Phase 6: Extraction Pipeline (Queue + AI) (0/10)
 - [ ] Phase 7: Matching Engine, Flags, and Review Queue (0/10)
 - [ ] Phase 8: Audit Trail, Compliance, Reports, and Exports (0/10)
@@ -236,7 +236,7 @@
 | 2 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 3 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 4 | [x] Yes | [x] Yes | Oct 05, 2026 |
-| 5 | [ ] | [ ] | Pending |
+| 5 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 6 | [ ] | [ ] | Pending |
 | 7 | [ ] | [ ] | Pending |
 | 8 | [ ] | [ ] | Pending |

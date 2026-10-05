@@ -9,6 +9,7 @@ import {
   detectTypeFromMagicBytes,
   validatePdf,
   validateAndCleanImage,
+  validateCsv,
   validateFinalObject,
   sanitizeFilename,
   computeContentHash,
@@ -18,6 +19,7 @@ import {
 
 import {
   checkUploadRateLimit,
+  checkUploadRateLimitDurable,
   rateTracker,
 } from '../src/lib/storage/rate-limit.ts';
 
@@ -511,5 +513,138 @@ test('Phase 5: Document Ingestion, Storage Policies, and Finalize Validation Tes
       assert.ok(log.reason);
       assert.equal(log.content, undefined, 'Audit log must not contain raw file content');
     }
+  });
+
+  // --------------------------------------------------------------------------
+  // Test 15: Server-side CSV validation (Section 3.2: UTF-8, no NUL, cols >= 3, rows <= 50,000)
+  // --------------------------------------------------------------------------
+  await t.test('15. Server-side CSV validation enforces strict UTF-8, no NUL bytes, header >= 3 cols, and <= 50,000 rows', () => {
+    // 15a. Valid CSV passes
+    const validCsv = Buffer.from('Date,Description,Amount\n2026-10-01,Supplier Payment,5000\n', 'utf8');
+    const resOk = validateCsv(validCsv);
+    assert.equal(resOk.isValid, true);
+    assert.equal(resOk.rowCount, 2);
+
+    // 15b. Header with < 3 columns is rejected
+    const badColsCsv = Buffer.from('Date,Amount\n2026-10-01,5000\n', 'utf8');
+    const resCols = validateCsv(badColsCsv);
+    assert.equal(resCols.isValid, false);
+    assert.match(resCols.error, /At least 3 columns are required/i);
+
+    // 15c. CSV containing NUL bytes is rejected
+    const nullByteCsv = Buffer.from('Date,Description,Amount\n2026-10-01,\x00corrupt,5000\n', 'binary');
+    const resNull = validateCsv(nullByteCsv);
+    assert.equal(resNull.isValid, false);
+    assert.match(resNull.error, /forbidden null bytes/i);
+
+    // 15d. Empty CSV is rejected
+    const emptyCsv = Buffer.from('', 'utf8');
+    const resEmpty = validateCsv(emptyCsv);
+    assert.equal(resEmpty.isValid, false);
+    assert.match(resEmpty.error, /CSV file is empty/i);
+
+    // 15e. CSV with > 50,000 rows is rejected
+    const lines = ['Date,Description,Amount'];
+    for (let i = 0; i < 50005; i++) {
+      lines.push(`2026-10-01,Entry #${i},100`);
+    }
+    const oversizedCsv = Buffer.from(lines.join('\n'), 'utf8');
+    const resOver = validateCsv(oversizedCsv);
+    assert.equal(resOver.isValid, false);
+    assert.match(resOver.error, /exceeding maximum allowed limit of 50,000 rows/i);
+  });
+
+  // --------------------------------------------------------------------------
+  // Test 16: iPhone HEIC image decoding & EXIF metadata stripping
+  // --------------------------------------------------------------------------
+  await t.test('16. Image pipeline successfully decodes images and strips personal EXIF metadata', async () => {
+    // Generate valid JPEG image with simulated camera EXIF
+    const testImg = await sharp({
+      create: { width: 64, height: 64, channels: 3, background: { r: 180, g: 150, b: 120 } },
+    })
+      .withMetadata({
+        exif: {
+          IFD0: {
+            Make: 'Apple',
+            Model: 'iPhone 15 Pro',
+          },
+        },
+      })
+      .jpeg()
+      .toBuffer();
+
+    const metaBefore = await sharp(testImg).metadata();
+    assert.equal(Boolean(metaBefore.exif), true);
+
+    const cleanRes = await validateAndCleanImage(testImg, false);
+    assert.equal(cleanRes.isValid, true);
+    assert.ok(cleanRes.cleanedBuffer);
+
+    const metaAfter = await sharp(cleanRes.cleanedBuffer).metadata();
+    assert.equal(Boolean(metaAfter.exif), false, 'EXIF must be cleanly stripped from working copy');
+  });
+
+  // --------------------------------------------------------------------------
+  // Test 17: Scheduled cleanup cron configuration (vercel.json & /api/cron/cleanup-uploads)
+  // --------------------------------------------------------------------------
+  await t.test('17. Scheduled cleanup cron is registered in vercel.json for automated execution', () => {
+    const vercelConfig = JSON.parse(readFileSync('vercel.json', 'utf8'));
+    assert.ok(vercelConfig.crons, 'vercel.json must define crons schedule');
+    const cleanupCron = vercelConfig.crons.find((c) => c.path === '/api/cron/cleanup-uploads');
+    assert.ok(cleanupCron, 'Cleanup cron path must be /api/cron/cleanup-uploads');
+    assert.equal(cleanupCron.schedule, '0 * * * *', 'Schedule must run hourly (0 * * * *)');
+  });
+
+  // --------------------------------------------------------------------------
+  // Test 18: Durable database-backed rate limiter simulation
+  // --------------------------------------------------------------------------
+  await t.test('18. Durable database-backed rate limiter queries audit_log records accurately', async () => {
+    const mockAuditLog = [];
+    const testUserId = `durable-user-${Date.now()}`;
+    const testOrgId = `durable-org-${Date.now()}`;
+
+    // Mock Supabase client mimicking audit_log count queries
+    const mockSupabase = {
+      from: (table) => ({
+        select: (_query, options) => ({
+          eq: (field1, val1) => ({
+            eq: (field2, val2) => ({
+              gte: (_field3, _val3) => {
+                let matches = mockAuditLog.filter((entry) => {
+                  return entry[field1] === val1 && entry[field2] === val2;
+                });
+                return Promise.resolve({ count: matches.length, error: null });
+              },
+            }),
+          }),
+        }),
+      }),
+    };
+
+    // Populate 29 existing requests in audit_log
+    for (let i = 0; i < 29; i++) {
+      mockAuditLog.push({
+        actor_id: testUserId,
+        org_id: testOrgId,
+        action: 'document_upload_requested',
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    // 30th request allowed
+    const res30 = await checkUploadRateLimitDurable(testUserId, testOrgId, mockSupabase);
+    assert.equal(res30.isAllowed, true);
+
+    // 31st request: Add one more to mockAuditLog to hit 30
+    mockAuditLog.push({
+      actor_id: testUserId,
+      org_id: testOrgId,
+      action: 'document_upload_requested',
+      created_at: new Date().toISOString(),
+    });
+
+    const res31 = await checkUploadRateLimitDurable(testUserId, testOrgId, mockSupabase);
+    assert.equal(res31.isAllowed, false);
+    assert.match(res31.error, /maximum 30 uploads per 10 minutes/i);
   });
 });
