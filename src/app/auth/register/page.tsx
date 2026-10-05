@@ -101,7 +101,7 @@ export default function RegisterPage() {
 
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-warm-charcoal uppercase tracking-wider">
-              Password (Min 12 Characters)
+              Password (Min 8 Characters)
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-warm-taupe absolute left-3 top-3.5" />

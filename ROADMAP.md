@@ -76,7 +76,7 @@
 
 - [x] 3.1 Enable Google OAuth (Supabase Auth) with a correctly configured consent screen and exact redirect URIs for local, preview, and production.
 - [x] 3.2 Enable email + password sign-up with email verification required before access.
-- [x] 3.3 Enforce password policy: minimum 12 characters, check against a breached-password list, no composition gimmicks.
+- [x] 3.3 Enforce password policy: minimum 8 characters, check against a breached-password list, no composition gimmicks.
 - [x] 3.4 Build sign-up, login, logout, forgot-password, and reset-password flows with clear, non-leaking error messages ("Invalid email or password").
 - [x] 3.5 Login rate limiting: max 5 failed attempts per account + IP per 15 minutes, then progressive lockout (1 min, 5 min, 15 min), plus a bot challenge (e.g., Turnstile) after 3 failures. Add a separate IP-level limit on sign-up and reset requests.
 - [x] 3.6 Use secure session cookies: `HttpOnly`, `Secure`, `SameSite=Lax`; short-lived access token with refresh rotation.
