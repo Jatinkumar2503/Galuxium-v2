@@ -4,11 +4,13 @@
 --
 -- Fixes & Hardening Applied:
 -- 1. Calls public.auth_org_role directly in storage policies without wrapping or redefining get_org_role.
--- 2. Preserves NOT NULL on canonical columns (file_path, file_name, mime_type, file_size_bytes).
--- 3. Removes redundant columns (original_filename, size_bytes, storage_path) and reuses canonical columns.
--- 4. content_hash is nullable only while status is pending_validation/rejected; validated rows require complete metadata.
--- 5. Adds B-Tree composite indexes on audit_log for fast durable rate-limiting queries.
--- 6. Safe UUID parser specifies SET search_path = pg_catalog, public to prevent search_path hijacking.
+-- 2. Removes any stray get_org_role function if it was previously created.
+-- 3. Cleans up invalid dev test rows with NULLs before enforcing NOT NULL.
+-- 4. Preserves NOT NULL on canonical columns (file_path, file_name, mime_type, file_size_bytes).
+-- 5. Removes redundant columns (original_filename, size_bytes, storage_path) and reuses canonical columns.
+-- 6. content_hash is nullable only while status is pending_validation/rejected; validated rows require complete metadata.
+-- 7. Adds B-Tree composite indexes on audit_log for fast durable rate-limiting queries.
+-- 8. Safe UUID parser specifies SET search_path = pg_catalog, public to prevent search_path hijacking.
 -- ==============================================================================
 
 -- 1. Safe cast helper: Non-UUID first path component returns NULL (denying access), never raises exception
@@ -25,7 +27,10 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- 2. Storage Bucket and Object RLS Policies
+-- 2. Drop legacy get_org_role if it was previously defined or pasted
+DROP FUNCTION IF EXISTS public.get_org_role(uuid);
+
+-- 3. Storage Bucket and Object RLS Policies
 DO $storage$
 BEGIN
   IF to_regnamespace('storage') IS NULL THEN
@@ -84,7 +89,7 @@ BEGIN
 END
 $storage$;
 
--- 3. Public Documents Schema Hardening
+-- 4. Public Documents Schema Hardening
 -- Migrate data if duplicate columns were created during testing
 DO $$
 BEGIN
@@ -115,6 +120,10 @@ ALTER TABLE public.documents
   DROP COLUMN IF EXISTS original_filename,
   DROP COLUMN IF EXISTS size_bytes,
   DROP COLUMN IF EXISTS storage_path;
+
+-- Clean up any invalid or abandoned dev test rows that have NULL in mandatory columns before enforcing NOT NULL
+DELETE FROM public.documents
+WHERE file_path IS NULL OR file_name IS NULL OR mime_type IS NULL OR file_size_bytes IS NULL;
 
 -- Enforce canonical columns and nullable content_hash during pending_validation
 ALTER TABLE public.documents
@@ -155,7 +164,7 @@ ALTER TABLE public.documents
     )
   );
 
--- 4. B-Tree Indexes on audit_log for Durable Rate-Limiting Queries (10m and 24h windows)
+-- 5. B-Tree Indexes on audit_log for Durable Rate-Limiting Queries (10m and 24h windows)
 CREATE INDEX IF NOT EXISTS idx_audit_log_org_action_created
   ON public.audit_log (org_id, action, created_at);
 

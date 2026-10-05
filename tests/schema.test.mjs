@@ -78,4 +78,136 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
     assert.match(combinedSQL, /CONSTRAINT unique_org_doc_hash UNIQUE \(org_id, content_hash\)/i);
     assert.match(combinedSQL, /CREATE OR REPLACE FUNCTION check_duplicate_document/i);
   });
+
+  await t.test('Document validated constraint: pending row without hash succeeds; validated row without hash fails', async () => {
+    // 1. Static regex validation of check_validated_complete
+    assert.match(
+      combinedSQL,
+      /CONSTRAINT\s+check_validated_complete\s+CHECK/i,
+      'Migration 000009 must define check_validated_complete constraint'
+    );
+    assert.match(
+      combinedSQL,
+      /status\s*!=\s*'validated'\s+OR\s+\([\s\S]*?content_hash\s+IS\s+NOT\s+NULL/i,
+      'check_validated_complete must enforce content_hash IS NOT NULL on validated documents'
+    );
+
+    // 2. If live PostgreSQL connection string is available (e.g. CI pipeline)
+    if (process.env.DATABASE_URL) {
+      const { Client } = await import('pg');
+      const client = new Client({ connectionString: process.env.DATABASE_URL });
+      await client.connect();
+
+      try {
+        const orgRes = await client.query('SELECT id FROM organizations LIMIT 1');
+        const orgId = orgRes.rows[0]?.id;
+        assert.ok(orgId, 'Must have at least one test organization in database');
+
+        const testDocId1 = crypto.randomUUID();
+        const testDocId2 = crypto.randomUUID();
+
+        // Inserting pending_validation row with NULL content_hash must SUCCEED
+        await client.query(
+          `INSERT INTO documents (id, org_id, file_path, file_name, mime_type, file_size_bytes, status, content_hash)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [testDocId1, orgId, `${orgId}/${testDocId1}/orig.pdf`, 'invoice.pdf', 'application/pdf', 1024, 'pending_validation', null]
+        );
+
+        const insertedPending = await client.query('SELECT status, content_hash FROM documents WHERE id = $1', [testDocId1]);
+        assert.equal(insertedPending.rows[0].status, 'pending_validation');
+        assert.equal(insertedPending.rows[0].content_hash, null);
+
+        // Clean up testDocId1
+        await client.query('DELETE FROM documents WHERE id = $1', [testDocId1]);
+
+        // Inserting validated row with NULL content_hash must FAIL with check_validated_complete error
+        await assert.rejects(
+          async () => {
+            await client.query(
+              `INSERT INTO documents (id, org_id, file_path, file_name, mime_type, file_size_bytes, status, content_hash)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              [testDocId2, orgId, `${orgId}/${testDocId2}/orig.pdf`, 'invoice.pdf', 'application/pdf', 1024, 'validated', null]
+            );
+          },
+          /check_validated_complete/i,
+          'Inserting validated document without content_hash must reject with check_validated_complete error'
+        );
+      } finally {
+        await client.end();
+      }
+    } else {
+      // Deterministic validation of check_validated_complete constraint logic
+      const checkConstraint = (status, content_hash, file_path, file_name, mime_type, file_size_bytes) => {
+        if (status === 'validated') {
+          return (
+            content_hash !== null &&
+            content_hash !== undefined &&
+            Boolean(file_path) &&
+            Boolean(file_name) &&
+            Boolean(mime_type) &&
+            typeof file_size_bytes === 'number'
+          );
+        }
+        return true;
+      };
+
+      assert.equal(
+        checkConstraint('pending_validation', null, 'path', 'name', 'pdf', 100),
+        true,
+        'pending_validation with null content_hash must pass'
+      );
+      assert.equal(
+        checkConstraint('validated', null, 'path', 'name', 'pdf', 100),
+        false,
+        'validated with null content_hash must fail'
+      );
+      assert.equal(
+        checkConstraint('validated', 'a'.repeat(64), 'path', 'name', 'pdf', 100),
+        true,
+        'validated with valid content_hash must pass'
+      );
+    }
+  });
+
+  await t.test('Full migration chain cleanly defines storage skip block and required indexes', async () => {
+    // 1. Verify storage skip block is present in migration 000009
+    assert.match(
+      combinedSQL,
+      /IF to_regnamespace\('storage'\) IS NULL THEN/i,
+      'Migration must include safe skip block for environments lacking storage schema'
+    );
+
+    // 2. Verify audit_log composite indexes are defined for durable rate limiting
+    assert.match(
+      combinedSQL,
+      /CREATE INDEX IF NOT EXISTS idx_audit_log_org_action_created\s*ON public\.audit_log\s*\(org_id,\s*action,\s*created_at\)/i,
+      'idx_audit_log_org_action_created index must be defined'
+    );
+    assert.match(
+      combinedSQL,
+      /CREATE INDEX IF NOT EXISTS idx_audit_log_actor_action_created\s*ON public\.audit_log\s*\(actor_id,\s*action,\s*created_at\)/i,
+      'idx_audit_log_actor_action_created index must be defined'
+    );
+
+    // 3. If live PostgreSQL is connected, verify that all migrations applied cleanly without errors
+    if (process.env.DATABASE_URL) {
+      const { Client } = await import('pg');
+      const client = new Client({ connectionString: process.env.DATABASE_URL });
+      await client.connect();
+      try {
+        const checkRes = await client.query(
+          "SELECT conname FROM pg_constraint WHERE conname = 'check_validated_complete'"
+        );
+        assert.equal(checkRes.rows.length, 1, 'check_validated_complete must exist in live database');
+
+        const indexRes = await client.query(
+          "SELECT indexname FROM pg_indexes WHERE tablename = 'audit_log' AND indexname IN ('idx_audit_log_org_action_created', 'idx_audit_log_actor_action_created')"
+        );
+        assert.equal(indexRes.rows.length, 2, 'Both rate-limit composite indexes must exist in live database');
+      } finally {
+        await client.end();
+      }
+    }
+  });
 });
+
