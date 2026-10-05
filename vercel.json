@@ -11,6 +11,12 @@
     "silent": false,
     "autoJobCancelation": true
   },
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-uploads",
+      "schedule": "0 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

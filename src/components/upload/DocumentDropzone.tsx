@@ -228,6 +228,27 @@ export function DocumentDropzone({ orgId, onUploadSuccess }: DocumentDropzonePro
     uploadFile(item);
   };
 
+  const completedCount = items.filter((i) => i.status === 'complete').length;
+  const failedCount = items.filter((i) => i.status === 'failed').length;
+  const inProgressCount = items.filter((i) =>
+    ['requesting', 'uploading', 'validating'].includes(i.status)
+  ).length;
+  const overallPercent =
+    items.length > 0
+      ? Math.round(
+          items.reduce(
+            (acc, i) => acc + (i.status === 'complete' ? 100 : i.progress),
+            0
+          ) / items.length
+        )
+      : 0;
+
+  const retryAllFailed = () => {
+    items
+      .filter((i) => i.status === 'failed')
+      .forEach((item) => uploadFile(item));
+  };
+
   return (
     <div className="w-full space-y-4">
       {/* Primary Drop Area */}
@@ -293,7 +314,7 @@ export function DocumentDropzone({ orgId, onUploadSuccess }: DocumentDropzonePro
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-warm-charcoal text-warm-bg text-xs font-semibold hover:bg-warm-charcoal/90 transition-all shadow-sm"
             >
               <FileText className="w-3.5 h-3.5 text-warm-accent" />
-              <span>Choose Files</span>
+              <span>Choose Files (Bulk Supported)</span>
             </button>
 
             <button
@@ -308,17 +329,45 @@ export function DocumentDropzone({ orgId, onUploadSuccess }: DocumentDropzonePro
         </div>
       </div>
 
-      {/* Upload Queue Ledger */}
+      {/* Upload Queue Ledger (Phase 5.9: Bulk queue indicator) */}
       {items.length > 0 && (
         <div className="rounded-xl border border-warm-sand bg-warm-surface overflow-hidden shadow-sm divide-y divide-warm-sand/60">
-          <div className="p-3 bg-warm-cream/50 flex items-center justify-between text-xs text-warm-taupe">
-            <span className="font-medium text-warm-charcoal">
-              Document Ingestion Queue ({items.length})
-            </span>
-            <span className="text-[11px]">
-              {items.filter((i) => i.status === 'complete').length} Validated ·{' '}
-              {items.filter((i) => i.status === 'failed').length} Failed
-            </span>
+          <div className="p-3.5 bg-warm-cream/50 space-y-2">
+            <div className="flex items-center justify-between text-xs text-warm-taupe">
+              <span className="font-semibold text-warm-charcoal flex items-center gap-2">
+                <span>Batch Upload Queue ({items.length} items)</span>
+                {inProgressCount > 0 && (
+                  <span className="px-2 py-0.5 rounded text-[10px] bg-warm-surface border border-warm-sand text-warm-accent font-medium flex items-center gap-1">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                    <span>Processing {inProgressCount}</span>
+                  </span>
+                )}
+              </span>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="text-warm-bronze font-medium">{completedCount} Validated</span>
+                <span>·</span>
+                <span className={failedCount > 0 ? 'text-warm-terracotta font-medium' : ''}>
+                  {failedCount} Rejected
+                </span>
+                {failedCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={retryAllFailed}
+                    className="ml-1 text-xs text-warm-accent underline hover:text-warm-charcoal font-medium"
+                  >
+                    Retry All
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Overall Queue Progress Bar */}
+            <div className="w-full bg-warm-sand/40 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-warm-bronze h-full transition-all duration-300"
+                style={{ width: `${overallPercent}%` }}
+              />
+            </div>
           </div>
 
           <div className="divide-y divide-warm-sand/40 max-h-72 overflow-y-auto">

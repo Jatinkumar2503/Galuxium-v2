@@ -1,4 +1,6 @@
-// In-memory rate limiting tracker (simulates distributed Redis / Edge KV)
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+// In-memory rate limiting tracker (fallback and unit testing)
 export interface RateTracker {
   userRequests: Map<string, number[]>; // userId -> timestamp[]
   orgDailyRequests: Map<string, { count: number; date: string }>;
@@ -10,8 +12,7 @@ export const rateTracker: RateTracker = {
 };
 
 /**
- * Checks rate limits per Section 4:
- * 30 upload requests per user per 10 minutes, 200 per org per day.
+ * In-memory rate limit checker (for fast local simulation or offline tests).
  */
 export function checkUploadRateLimit(
   userId: string,
@@ -51,4 +52,64 @@ export function checkUploadRateLimit(
   }
 
   return { isAllowed: true };
+}
+
+/**
+ * Serverless-durable rate limit checker backed by PostgreSQL audit_log (Section 4 & 5.10).
+ * Survives serverless cold starts and multi-instance concurrency across edge workers.
+ */
+export async function checkUploadRateLimitDurable(
+  userId: string,
+  orgId: string,
+  supabaseClient?: SupabaseClient
+): Promise<{ isAllowed: boolean; error?: string }> {
+  // If no Supabase client is supplied (e.g. running in purely local unit tests), use in-memory tracker
+  if (!supabaseClient) {
+    return checkUploadRateLimit(userId, orgId);
+  }
+
+  try {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    // 1. User upload requests in last 10 minutes
+    const { count: userUploadCount, error: userError } = await supabaseClient
+      .from('audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('actor_id', userId)
+      .eq('action', 'document_upload_requested')
+      .gte('created_at', tenMinutesAgo);
+
+    if (!userError && userUploadCount !== null && userUploadCount >= 30) {
+      return {
+        isAllowed: false,
+        error:
+          'Upload rate limit exceeded: maximum 30 uploads per 10 minutes. Please wait before retrying.',
+      };
+    }
+
+    // 2. Org upload requests in last 24 hours
+    const { count: orgUploadCount, error: orgError } = await supabaseClient
+      .from('audit_log')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .eq('action', 'document_upload_requested')
+      .gte('created_at', twentyFourHoursAgo);
+
+    if (!orgError && orgUploadCount !== null && orgUploadCount >= 200) {
+      return {
+        isAllowed: false,
+        error:
+          'Organization daily upload quota reached (200 documents/day). Upgrade plan or contact support.',
+      };
+    }
+
+    // Also mirror to memory for defense-in-depth within instance
+    checkUploadRateLimit(userId, orgId);
+
+    return { isAllowed: true };
+  } catch {
+    // Fallback gracefully to in-memory tracking if DB count query fails
+    return checkUploadRateLimit(userId, orgId);
+  }
 }

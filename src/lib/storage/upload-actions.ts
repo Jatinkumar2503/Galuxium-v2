@@ -8,8 +8,8 @@ import {
   validateFinalObject,
   sanitizeFilename,
 } from './validation';
-import { checkUploadRateLimit, rateTracker } from './rate-limit';
-export { checkUploadRateLimit, rateTracker };
+import { checkUploadRateLimit, checkUploadRateLimitDurable, rateTracker } from './rate-limit';
+export { checkUploadRateLimit, checkUploadRateLimitDurable, rateTracker };
 
 export interface RequestUploadParams {
   orgId: string;
@@ -76,8 +76,9 @@ export async function requestUploadAction(params: RequestUploadParams): Promise<
     };
   }
 
-  // 2. Rate limiting check (Section 4)
-  const rateLimit = checkUploadRateLimit(user.id, orgId);
+  // 2. Durable serverless rate limiting check (Section 4 & 5.10)
+  const admin = createAdminClient();
+  const rateLimit = await checkUploadRateLimitDurable(user.id, orgId, admin);
   if (!rateLimit.isAllowed) {
     return { success: false, error: rateLimit.error };
   }
@@ -139,7 +140,6 @@ export async function requestUploadAction(params: RequestUploadParams): Promise<
   }
 
   // 7. Audit log document upload request (Section 4)
-  const admin = createAdminClient();
   await admin.from('audit_log').insert({
     org_id: orgId,
     actor_id: user.id,

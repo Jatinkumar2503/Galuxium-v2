@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { DashboardIngestionSection } from '@/components/dashboard/DashboardIngestionSection';
+import { ViewDocumentButton } from '@/components/dashboard/ViewDocumentButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -207,6 +208,7 @@ export default async function DashboardPage() {
                     <th className="py-3 px-4">GSTIN</th>
                     <th className="py-3 px-4 text-right">Amount</th>
                     <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Access</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-warm-sand/50 text-warm-charcoal">
@@ -220,6 +222,13 @@ export default async function DashboardPage() {
                         Matched
                       </span>
                     </td>
+                    <td className="py-3 px-4 text-right">
+                      <ViewDocumentButton
+                        orgId={orgId}
+                        documentId="00000000-0000-0000-0000-000000000101"
+                        filename="INV-2026-BEL-091.pdf"
+                      />
+                    </td>
                   </tr>
                   <tr className="hover:bg-warm-cream/30 transition-colors">
                     <td className="py-3 px-4 font-medium">KSD-OCT-4402.pdf</td>
@@ -231,6 +240,13 @@ export default async function DashboardPage() {
                         Tax Review
                       </span>
                     </td>
+                    <td className="py-3 px-4 text-right">
+                      <ViewDocumentButton
+                        orgId={orgId}
+                        documentId="00000000-0000-0000-0000-000000000102"
+                        filename="KSD-OCT-4402.pdf"
+                      />
+                    </td>
                   </tr>
                   <tr className="hover:bg-warm-cream/30 transition-colors">
                     <td className="py-3 px-4 font-medium">MAH-LOG-1102.pdf</td>
@@ -241,6 +257,13 @@ export default async function DashboardPage() {
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-warm-surface border border-warm-bronze/40 text-warm-bronze">
                         Matched
                       </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <ViewDocumentButton
+                        orgId={orgId}
+                        documentId="00000000-0000-0000-0000-000000000103"
+                        filename="MAH-LOG-1102.pdf"
+                      />
                     </td>
                   </tr>
                 </tbody>
