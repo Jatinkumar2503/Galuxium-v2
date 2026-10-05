@@ -9,18 +9,24 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   Clock, 
-  UploadCloud, 
-  FileSpreadsheet, 
   ArrowUpRight,
   LogOut,
   ShieldCheck
 } from 'lucide-react';
+
+import { DashboardIngestionSection } from '@/components/dashboard/DashboardIngestionSection';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  // Fetch active org membership or fallback for demo
+  const { data: membership } = user
+    ? await supabase.from('memberships').select('org_id').eq('user_id', user.id).limit(1).maybeSingle()
+    : { data: null };
+  const orgId = membership?.org_id || '00000000-0000-0000-0000-000000000001';
 
   // Mock sample activity items for initial workspace presentation
   const mockActivities: SecurityActivityItem[] = [
@@ -103,22 +109,7 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-warm-charcoal text-warm-bg text-xs font-semibold hover:bg-warm-charcoal/90 transition-all shadow-sm"
-            >
-              <UploadCloud className="w-4 h-4 text-warm-accent" />
-              <span>Upload Invoices</span>
-            </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-warm-sand bg-warm-surface hover:bg-warm-cream text-warm-charcoal text-xs font-semibold transition-colors shadow-sm"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-warm-taupe" />
-              <span>Import Bank CSV</span>
-            </Link>
-          </div>
+          <DashboardIngestionSection orgId={orgId} />
         </div>
 
         {/* KPI Metrics Grid */}
