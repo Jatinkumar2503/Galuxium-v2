@@ -167,10 +167,11 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
             });
           },
           (err) => {
-            assert.ok(err.code === '42501' || /row-level security/i.test(err.message), `Expected 42501 RLS violation, got: ${err.message}`);
+            assert.equal(err.code, '42501', `Expected SQLSTATE 42501, got ${err.code}`);
+            assert.match(err.message, /row-level security/i, `Expected RLS violation message, got: ${err.message}`);
             return true;
           },
-          'User from Org A inserting into Org B must fail with SQLSTATE 42501'
+          'User from Org A inserting into Org B must fail with SQLSTATE 42501 and row-level security violation'
         );
       });
 
@@ -199,10 +200,11 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
             });
           },
           (err) => {
-            assert.ok(err.code === '42501' || /row-level security/i.test(err.message));
+            assert.equal(err.code, '42501', `Expected SQLSTATE 42501, got ${err.code}`);
+            assert.match(err.message, /row-level security/i, `Expected RLS violation message, got: ${err.message}`);
             return true;
           },
-          'Viewer INSERT must fail with SQLSTATE 42501'
+          'Viewer INSERT must fail with SQLSTATE 42501 and row-level security violation'
         );
 
         // Viewer UPDATE attempt
@@ -248,7 +250,8 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
               });
             },
             (err) => {
-              assert.ok(err.code === '42501' || /row-level security/i.test(err.message));
+              assert.equal(err.code, '42501', `Expected SQLSTATE 42501, got ${err.code}`);
+              assert.match(err.message, /row-level security/i, `Expected RLS violation message, got: ${err.message}`);
               return true;
             }
           );
@@ -329,7 +332,7 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
         );
       });
 
-      await t.test('20-insert cryptographic audit hash chain verification against PostgreSQL', async () => {
+      await t.test('20 concurrent inserts cryptographic audit hash chain verification against PostgreSQL', async () => {
         // Dedicated test org for isolated hash chain test
         const testChainOrg = crypto.randomUUID();
         await client.query(
@@ -337,38 +340,53 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
           [testChainOrg, `audit-chain-${Date.now()}`]
         );
 
-        // Insert 20 sequential entries
-        for (let i = 1; i <= 20; i++) {
-          await client.query(
-            `INSERT INTO audit_log (org_id, actor_id, action, entity_type, entity_id, details)
-             VALUES ($1, $2, $3, 'document', $4, '{}')`,
-            [testChainOrg, USER_OWNER_A, `action_${i}`, `entity_${i}`]
+        // Open 20 separate database connections to test concurrent writers with PostgreSQL advisory lock
+        const poolClients = await Promise.all(
+          Array.from({ length: 20 }, async () => {
+            const c = new Client({ connectionString: process.env.DATABASE_URL });
+            await c.connect();
+            return c;
+          })
+        );
+
+        try {
+          // Fire all 20 inserts simultaneously across distinct connections
+          await Promise.all(
+            poolClients.map((c, i) =>
+              c.query(
+                `INSERT INTO audit_log (org_id, actor_id, action, entity_type, entity_id, details)
+                 VALUES ($1, $2, $3, 'document', $4, '{}')`,
+                [testChainOrg, USER_OWNER_A, `concurrent_action_${i}`, `concurrent_entity_${i}`]
+              )
+            )
           );
-        }
 
-        // Query back ordered by id ASC
-        const chainRes = await client.query(
-          'SELECT id, prev_hash, entry_hash FROM audit_log WHERE org_id = $1 ORDER BY id ASC',
-          [testChainOrg]
-        );
+          // Query back ordered by id ASC
+          const chainRes = await client.query(
+            'SELECT id, prev_hash, entry_hash FROM audit_log WHERE org_id = $1 ORDER BY id ASC',
+            [testChainOrg]
+          );
 
-        assert.equal(chainRes.rows.length, 20, 'Must have inserted exactly 20 chain rows');
+          assert.equal(chainRes.rows.length, 20, 'Must have inserted exactly 20 chain rows');
 
-        // Verify Genesis hash
-        assert.equal(
-          chainRes.rows[0].prev_hash,
-          '0000000000000000000000000000000000000000000000000000000000000000',
-          'First entry must point to genesis zero hash'
-        );
-
-        // Verify unbroken chain links
-        for (let i = 1; i < 20; i++) {
+          // Verify Genesis hash
           assert.equal(
-            chainRes.rows[i].prev_hash,
-            chainRes.rows[i - 1].entry_hash,
-            `Row ${i} prev_hash must strictly match row ${i - 1} entry_hash`
+            chainRes.rows[0].prev_hash,
+            '0000000000000000000000000000000000000000000000000000000000000000',
+            'First entry must point to genesis zero hash'
           );
-          assert.equal(chainRes.rows[i].entry_hash.length, 64, 'Entry hash must be 64-char SHA256 hex');
+
+          // Verify unbroken chain links without forks
+          for (let i = 1; i < 20; i++) {
+            assert.equal(
+              chainRes.rows[i].prev_hash,
+              chainRes.rows[i - 1].entry_hash,
+              `Row ${i} prev_hash must strictly match row ${i - 1} entry_hash without chain forks under concurrency`
+            );
+            assert.equal(chainRes.rows[i].entry_hash.length, 64, 'Entry hash must be 64-char SHA256 hex');
+          }
+        } finally {
+          await Promise.all(poolClients.map((c) => c.end()));
         }
       });
     } finally {
