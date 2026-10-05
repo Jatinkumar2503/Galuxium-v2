@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 /**
  * Top Breached & Common Password Blacklist
  * Compiled from HaveIBeenPwned and SecLists common password leaks.
@@ -29,15 +27,15 @@ export interface PasswordValidationResult {
 
 /**
  * Validates a proposed password against Galuxium Nexus V2 security policy:
- * 1. Minimum 8 characters.
+ * 1. Minimum 12 characters.
  * 2. Breached password blacklist rejection.
  * 3. No composition gimmicks.
  */
 export function validatePassword(password: string): PasswordValidationResult {
-  if (!password || password.length < 8) {
+  if (!password || password.length < 12) {
     return {
       isValid: false,
-      error: 'Password must be at least 8 characters long.',
+      error: 'Password must be at least 12 characters long.',
     };
   }
 

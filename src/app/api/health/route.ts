@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,8 +9,35 @@ export async function GET() {
   const memoryUsage = process.memoryUsage();
   const uptimeSeconds = Math.floor(process.uptime());
 
+  let dbStatus = 'disconnected';
+  let dbLatencyMs: number | null = null;
+  let isDbHealthy = false;
+
+  try {
+    const dbStartTime = Date.now();
+    const supabase = createAdminClient();
+    
+    // Executes a real live query on the PostgreSQL database
+    const { error, status } = await supabase
+      .from('organizations')
+      .select('id', { count: 'exact', head: true });
+
+    dbLatencyMs = Date.now() - dbStartTime;
+
+    if (!error && status >= 200 && status < 300) {
+      dbStatus = 'connected';
+      isDbHealthy = true;
+    } else {
+      dbStatus = `error: ${error?.message || `HTTP ${status}`}`;
+    }
+  } catch (err: unknown) {
+    dbStatus = `error: ${err instanceof Error ? err.message : 'Database query failed'}`;
+  }
+
+  const overallStatus = isDbHealthy ? 'healthy' : 'degraded';
+
   const healthData = {
-    status: 'healthy',
+    status: overallStatus,
     service: 'galuxium-nexus-v2',
     timestamp: new Date().toISOString(),
     uptime: `${uptimeSeconds}s`,
@@ -17,8 +45,8 @@ export async function GET() {
     region: process.env.VERCEL_REGION || 'bom1',
     checks: {
       api: 'healthy',
-      database: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'mock-fallback',
-      storage: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'mock-fallback',
+      database: dbStatus,
+      databaseLatencyMs: dbLatencyMs,
     },
     system: {
       memoryRssMb: Math.round(memoryUsage.rss / 1024 / 1024),
@@ -28,7 +56,7 @@ export async function GET() {
   };
 
   return NextResponse.json(healthData, {
-    status: 200,
+    status: isDbHealthy ? 200 : 503,
     headers: {
       'Cache-Control': 'no-store, max-age=0',
       'Content-Type': 'application/json',

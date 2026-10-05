@@ -22,9 +22,9 @@ export function captureException(error: unknown, context?: ErrorContext) {
     });
   }
 
-  // When Sentry client is initialized in production, forward context
-  if (typeof window !== 'undefined' && (window as unknown as { Sentry?: { captureException: Function } }).Sentry) {
-    (window as unknown as { Sentry: { captureException: Function } }).Sentry.captureException(error, {
+  type SentryWindow = { Sentry?: { captureException: (err: unknown, opts?: Record<string, unknown>) => void } };
+  if (typeof window !== 'undefined' && (window as unknown as SentryWindow).Sentry) {
+    (window as unknown as SentryWindow).Sentry?.captureException(error, {
       extra: context,
     });
   }

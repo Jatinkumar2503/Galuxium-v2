@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { validatePassword } from '@/lib/auth/password-policy';
 import { checkLoginRateLimit, recordFailedLoginAttempt, clearFailedLoginAttempts } from '@/lib/auth/lockout';
@@ -16,11 +17,20 @@ export interface AuthActionResponse {
 /**
  * Signs in a user with email and password.
  * Protected by custom brute-force lockout layer and non-leaking errors.
+ * Extracts client IP securely from platform edge headers.
  */
 export async function signInAction(
   formData: FormData,
-  clientIp = '127.0.0.1'
+  customIp?: string
 ): Promise<AuthActionResponse> {
+  const headerList = await headers();
+  const clientIp =
+    customIp ||
+    headerList.get('cf-connecting-ip') ||
+    headerList.get('x-real-ip') ||
+    headerList.get('x-vercel-forwarded-for') ||
+    headerList.get('x-forwarded-for')?.split(',')[0].trim() ||
+    '127.0.0.1';
   const email = (formData.get('email') as string)?.trim().toLowerCase();
   const password = formData.get('password') as string;
   const turnstileToken = formData.get('turnstileToken') as string | undefined;

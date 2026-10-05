@@ -67,7 +67,15 @@ export async function fetchRecentSecurityActivity(
       .limit(limit);
 
     if (error || !data) return [];
-    return data as SecurityActivityItem[];
+    return (data as any[]).map((item) => ({
+      id: item.id,
+      action: item.action,
+      entityType: item.entity_type,
+      details: item.details || {},
+      ipAddress: item.ip_address,
+      userAgent: item.user_agent,
+      createdAt: item.created_at,
+    }));
   } catch {
     return [];
   }

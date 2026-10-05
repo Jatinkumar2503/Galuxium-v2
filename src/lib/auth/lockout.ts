@@ -1,5 +1,3 @@
-import { createAdminClient } from '../supabase/admin.ts';
-
 export interface LockoutStatus {
   isLocked: boolean;
   consecutiveFailures: number;

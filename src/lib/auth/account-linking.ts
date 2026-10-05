@@ -1,5 +1,3 @@
-import { createAdminClient } from '@/lib/supabase/admin';
-
 export interface LinkedIdentity {
   id: string;
   provider: 'email' | 'google';

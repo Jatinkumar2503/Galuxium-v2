@@ -48,7 +48,7 @@ export default function ResetPasswordPage() {
             Set New Password
           </h1>
           <p className="text-xs text-warm-taupe">
-            Choose a strong passphrase with at least 8 characters
+            Choose a strong passphrase with at least 12 characters
           </p>
         </div>
 

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { signUpWithEmail } from '@/lib/auth/email-auth';
 import { validatePassword } from '@/lib/auth/password-policy';
-import { UserPlus, User, Mail, Lock, ShieldCheck } from 'lucide-react';
+import { UserPlus, User, Mail, Lock } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -101,7 +101,7 @@ export default function RegisterPage() {
 
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-warm-charcoal uppercase tracking-wider">
-              Password (Min 8 Characters)
+              Password (Min 12 Characters)
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-warm-taupe absolute left-3 top-3.5" />
