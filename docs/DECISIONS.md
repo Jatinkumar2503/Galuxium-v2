@@ -42,4 +42,23 @@
 ## ADR 006: Supabase Storage Bucket Isolation & RLS Enforcement (Phase 5 Requirement)
 - **Status:** Accepted
 - **Context:** PostgreSQL RLS applied to tables (`documents`, `clients`, etc.) does not automatically protect files stored in Supabase Storage buckets. Unchecked storage access could allow cross-tenant file downloads if a user guesses a direct URL.
-- **Decision:** All files must be stored with an explicit organization prefix: `documents/<org_id>/<year>/<month>/<doc_id>.<ext>`. In Phase 5 (Instruction 5.3), dedicated RLS policies on `storage.objects` will enforce that users can only upload and read files where the first path segment matches an `org_id` they belong to in `memberships`. Direct public URLs are disabled; only signed short-lived URLs (ADR 5.7) will be issued.
+- **Decision:** All files must be stored with an explicit organization prefix: `documents/<org_id>/<document_id>/original.<ext>`. Dedicated RLS policies on `storage.objects` (`documents_select_member`, `documents_insert_writer`, `documents_delete_owner`) enforce that users can only upload and read files where the first path segment matches an `org_id` they belong to in `memberships`. Objects are immutable (`upsert: false`, no UPDATE policy). Direct public URLs are disabled; only signed short-lived URLs (expires in 300s) are issued.
+
+## ADR 007: Two-Phase Signed Uploads & Direct-to-Storage Architecture (Phase 5.1 - 5.4)
+- **Status:** Accepted
+- **Context:** Vercel Serverless Functions reject request bodies over ~4.5 MB. Ingesting 10 MB invoice PDFs or high-resolution photos through Next.js route handlers would work on localhost and immediately fail in production.
+- **Decision:** Use a two-phase signed upload protocol:
+  1. `requestUploadAction`: Verifies org membership role (`owner` or `accountant`), rate limits, allow-list, generates `crypto.randomUUID()`, reserves `pending_validation` row, and issues a session-scoped signed upload URL.
+  2. Browser uploads directly to Supabase Storage with `upsert: false`.
+  3. `finalizeUploadAction`: Server reads stored binary and executes strict sequential validation (Size $\rightarrow$ Magic bytes $\rightarrow$ Declared vs Detected type $\rightarrow$ PDF security heuristics $\rightarrow$ Sharp decompression bomb & EXIF strip $\rightarrow$ SHA-256 duplicate detection $\rightarrow$ Filename sanitization).
+  4. Scheduled hourly cron job (`/api/cron/cleanup-uploads`) sweeps rows in `pending_validation` older than 1 hour.
+
+## ADR 008: Malware Scanning Gap & PDF Heuristic Pre-Filtering (Phase 5.6)
+- **Status:** Accepted (Documented Known Gap)
+- **Context:** Traditional antivirus engines like ClamAV cannot run within lightweight Vercel serverless environments. Claiming active malware scanning exists without infrastructure is a security falsehood.
+- **Decision:** 
+  1. Record `scan_status = 'skipped'` explicitly on every document row in `documents` table and audit log.
+  2. Implement an in-memory heuristic token scanner for PDFs checking uncompressed byte sequences for `/JavaScript`, `/JS`, `/Launch`, and `/EmbeddedFile`.
+  3. **Explicit Heuristic Limitation:** Raw token scanning does not detect active content hidden inside compressed FlateDecode streams or advanced PDF obfuscation. It serves solely as a fast, first-line hygiene filter before vision model ingestion.
+  4. **Future Roadmap:** Route finalized files to an asynchronous queue (Phase 6) that calls an external scanning API (e.g. VirusTotal or an AWS S3 ClamAV Lambda sidecar) before extraction.
+
