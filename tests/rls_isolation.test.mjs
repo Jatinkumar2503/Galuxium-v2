@@ -363,9 +363,12 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
             )
           );
 
-          // Query back ordered by id ASC
+          // Query back ordered by monotonic seq ASC
           const chainRes = await client.query(
-            'SELECT id, prev_hash, entry_hash FROM audit_log WHERE org_id = $1 ORDER BY id ASC',
+            `SELECT id, seq, org_id, actor_id, action, entity_type, entity_id, details, prev_hash, entry_hash
+             FROM audit_log
+             WHERE org_id = $1
+             ORDER BY seq ASC`,
             [testChainOrg]
           );
 
@@ -383,14 +386,36 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
             assert.equal(row.entry_hash.length, 64, 'Entry hash must be 64-char SHA256 hex');
           }
 
-          // Walk the chain from Genesis to tip (verifying exactly 20 unbroken links)
+          // Walk the chain from Genesis to tip (verifying exactly 20 unbroken links, sequential seq, and recomputing hashes)
           let currentPrev = genesis;
           let chainLength = 0;
           while (byPrevHash.has(currentPrev)) {
             const nextNode = byPrevHash.get(currentPrev);
-            currentPrev = nextNode.entry_hash;
             chainLength++;
+
+            // Verify strict monotonic sequential indexing (1..20)
+            assert.equal(
+              Number(nextNode.seq),
+              chainLength,
+              `Row seq (${nextNode.seq}) must match sequential chain index (${chainLength})`
+            );
+
+            // Recompute SHA-256 entry_hash from row payload to ensure content integrity against tampering
+            const detailsStr = typeof nextNode.details === 'string'
+              ? nextNode.details
+              : JSON.stringify(nextNode.details);
+            const expectedPayload = `${nextNode.prev_hash}:${nextNode.org_id}:${nextNode.action}:${nextNode.entity_type}:${nextNode.entity_id}:${detailsStr}:${nextNode.actor_id || 'system'}`;
+            const expectedHash = crypto.createHash('sha256').update(expectedPayload).digest('hex');
+
+            assert.equal(
+              nextNode.entry_hash,
+              expectedHash,
+              `Row seq ${nextNode.seq} entry_hash must strictly match SHA-256 digest of its payload content`
+            );
+
+            currentPrev = nextNode.entry_hash;
           }
+
           assert.equal(
             chainLength,
             20,

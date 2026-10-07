@@ -230,5 +230,37 @@ test('Database Migrations and Multi-Tenancy Architecture Tests', async (t) => {
       }
     }
   });
+
+  await t.test('Migration 000010 defines audit_log seq column and unique constraint (org_id, seq)', async () => {
+    assert.match(
+      combinedSQL,
+      /ALTER TABLE public\.audit_log ADD COLUMN IF NOT EXISTS seq BIGINT/i,
+      'Migration 000010 must define seq column on audit_log'
+    );
+    assert.match(
+      combinedSQL,
+      /CONSTRAINT audit_log_org_seq_unique UNIQUE \(org_id, seq\)/i,
+      'Migration 000010 must enforce unique constraint on (org_id, seq)'
+    );
+
+    if (process.env.DATABASE_URL) {
+      const { Client } = await import('pg');
+      const client = new Client({ connectionString: process.env.DATABASE_URL });
+      await client.connect();
+      try {
+        const constraintRes = await client.query(
+          "SELECT conname FROM pg_constraint WHERE conname = 'audit_log_org_seq_unique'"
+        );
+        assert.equal(constraintRes.rows.length, 1, 'audit_log_org_seq_unique constraint must exist in database');
+
+        const colRes = await client.query(
+          "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'audit_log' AND column_name = 'seq'"
+        );
+        assert.equal(colRes.rows.length, 1, 'seq column must exist on audit_log');
+      } finally {
+        await client.end();
+      }
+    }
+  });
 });
 
