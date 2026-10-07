@@ -137,6 +137,8 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
         await client.query(`SELECT set_config('request.jwt.claims', $1, true)`, [
           JSON.stringify({ sub: userId, role: 'authenticated' }),
         ]);
+        await client.query(`SELECT set_config('request.jwt.claim.sub', $1, true)`, [userId]);
+        await client.query(`SELECT set_config('request.jwt.claim.role', $1, true)`, ['authenticated']);
         const res = await callback();
         await client.query('COMMIT');
         return res;
