@@ -1,16 +1,18 @@
-# Security & Credential Rules
+# Security & Credential Rules (Strict)
 
-1. **NEVER read system credential stores or extract tokens:**
-   - Never run `git credential fill`, query Windows Credential Manager, Keychain, or any secret store.
-   - Never paste tokens, secrets, or API keys directly into terminal command strings, scripts, or commit history.
+1. **NEVER open, view, or read `.env*` files containing secrets:**
+   - The agent is strictly forbidden from using `view_file`, `cat`, `Get-Content`, or any read tool on `.env`, `.env.local`, `.env.production`, etc.
+   - When key names or schema shapes are needed, only inspect `.env.example`.
+   - Never print, echo, log, or include secret keys, JWTs (starting with `eyJ`), or tokens in terminal command strings or scripts.
 
-2. **GitHub CLI & Authentication:**
-   - If GitHub operations are required via `gh`, the user must authenticate themselves interactively using `gh auth login` via the browser flow.
-   - The agent must only run unauthenticated or natively session-authenticated commands without passing tokens.
+2. **Credential Stores & Tokens:**
+   - NEVER query credential stores (`git credential fill`, Windows Credential Manager, Keychain).
+   - If commands require environment variables, consume them natively via `process.env` or `node --env-file=.env.local` without printing or embedding values.
+   - The agent must NEVER run requests against live production databases using service-role keys. Live project management queries must be run by the user.
 
-3. **No Polling Loops:**
-   - Never poll GitHub Actions or external services in rapid command loops. Check status once when requested or rely on asynchronous webhooks/eventual user inspection.
+3. **Tripwire Rule:**
+   - If any string matching `gho_` (GitHub token) or `eyJ` (JWT token) ever appears in output or commands, it is treated as an immediate credential burn requiring instant rotation.
 
-4. **Database Safety:**
-   - Local database tests and replay scripts must only ever target throwaway local databases (`ci_scratch`) on `localhost`.
-   - Never point `DATABASE_URL` at production or hosted Supabase instances during automated test execution.
+4. **GitHub CLI & Actions:**
+   - Never pass OAuth tokens or PATs to `gh` or git commands.
+   - Never run automated rapid-polling loops.

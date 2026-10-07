@@ -371,22 +371,31 @@ test('PostgreSQL Row-Level Security (RLS) Isolation Test Suite', async (t) => {
 
           assert.equal(chainRes.rows.length, 20, 'Must have inserted exactly 20 chain rows');
 
-          // Verify Genesis hash
-          assert.equal(
-            chainRes.rows[0].prev_hash,
-            '0000000000000000000000000000000000000000000000000000000000000000',
-            'First entry must point to genesis zero hash'
-          );
-
-          // Verify unbroken chain links without forks
-          for (let i = 1; i < 20; i++) {
-            assert.equal(
-              chainRes.rows[i].prev_hash,
-              chainRes.rows[i - 1].entry_hash,
-              `Row ${i} prev_hash must strictly match row ${i - 1} entry_hash without chain forks under concurrency`
+          // Verify unbroken cryptographic chain from Genesis without forks
+          const genesis = '0000000000000000000000000000000000000000000000000000000000000000';
+          const byPrevHash = new Map();
+          for (const row of chainRes.rows) {
+            assert.ok(
+              !byPrevHash.has(row.prev_hash),
+              `Chain fork detected under concurrency! Multiple entries point to prev_hash ${row.prev_hash}`
             );
-            assert.equal(chainRes.rows[i].entry_hash.length, 64, 'Entry hash must be 64-char SHA256 hex');
+            byPrevHash.set(row.prev_hash, row);
+            assert.equal(row.entry_hash.length, 64, 'Entry hash must be 64-char SHA256 hex');
           }
+
+          // Walk the chain from Genesis to tip (verifying exactly 20 unbroken links)
+          let currentPrev = genesis;
+          let chainLength = 0;
+          while (byPrevHash.has(currentPrev)) {
+            const nextNode = byPrevHash.get(currentPrev);
+            currentPrev = nextNode.entry_hash;
+            chainLength++;
+          }
+          assert.equal(
+            chainLength,
+            20,
+            'All 20 concurrent inserts must form an unbroken, non-forking linear chain from Genesis'
+          );
         } finally {
           await Promise.all(poolClients.map((c) => c.end()));
         }
