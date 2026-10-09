@@ -23,11 +23,32 @@ export default async function DashboardPage() {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Fetch active org membership or fallback for demo
-  const { data: membership } = user
-    ? await supabase.from('memberships').select('org_id').eq('user_id', user.id).limit(1).maybeSingle()
-    : { data: null };
-  const orgId = membership?.org_id || '00000000-0000-0000-0000-000000000001';
+  // Fetch active org membership or auto-assign to Bharat Electronics demo org
+  let orgId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+  if (user) {
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (membership?.org_id) {
+      orgId = membership.org_id;
+    } else {
+      try {
+        const { createAdminClient } = await import('@/lib/supabase/admin');
+        const admin = createAdminClient();
+        await admin.from('memberships').upsert({
+          org_id: orgId,
+          user_id: user.id,
+          role: 'owner',
+        });
+      } catch (err) {
+        console.warn('Could not auto-provision demo membership:', err);
+      }
+    }
+  }
 
   // Mock sample activity items for initial workspace presentation
   const mockActivities: SecurityActivityItem[] = [
