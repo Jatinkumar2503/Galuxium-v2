@@ -1,0 +1,11 @@
+{
+  "id": "05",
+  "category": "Clean PDF Professional Services",
+  "invoice_number": "INV-2026-105",
+  "invoice_date": "2026-10-05",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 3540000,
+  "total_tax": 540000,
+  "subtotal": 3000000,
+  "should_fail_checks": false
+}

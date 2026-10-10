@@ -1,0 +1,11 @@
+{
+  "id": "01",
+  "category": "Clean PDF Template 1",
+  "invoice_number": "INV-2026-101",
+  "invoice_date": "2026-10-01",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 1180000,
+  "total_tax": 180000,
+  "subtotal": 1000000,
+  "should_fail_checks": false
+}

@@ -1,0 +1,11 @@
+{
+  "id": "17",
+  "category": "Bilingual Receipt",
+  "invoice_number": "INV-2026-117",
+  "invoice_date": "2026-10-03",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 3540000,
+  "total_tax": 540000,
+  "subtotal": 3000000,
+  "should_fail_checks": false
+}

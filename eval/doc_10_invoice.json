@@ -1,0 +1,11 @@
+{
+  "id": "10",
+  "category": "Phone Photo Dim Light",
+  "invoice_number": "INV-2026-110",
+  "invoice_date": "2026-10-10",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 1416000,
+  "total_tax": 216000,
+  "subtotal": 1200000,
+  "should_fail_checks": false
+}

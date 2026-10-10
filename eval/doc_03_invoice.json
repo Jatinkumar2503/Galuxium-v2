@@ -1,0 +1,11 @@
+{
+  "id": "03",
+  "category": "Clean PDF Two-Page",
+  "invoice_number": "INV-2026-103",
+  "invoice_date": "2026-10-03",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 5900000,
+  "total_tax": 900000,
+  "subtotal": 5000000,
+  "should_fail_checks": false
+}

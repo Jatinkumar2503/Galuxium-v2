@@ -9,6 +9,7 @@ import {
   sanitizeFilename,
 } from './validation';
 import { checkUploadRateLimitDurable } from './rate-limit';
+import { inngest } from '../inngest/client';
 
 export interface RequestUploadParams {
   orgId: string;
@@ -360,6 +361,27 @@ export async function finalizeUploadAction(params: FinalizeUploadParams): Promis
     },
   });
 
+  // Enqueue extraction pipeline via Inngest (Phase 6.1)
+  try {
+    await inngest.send({
+      name: 'document/validated',
+      data: {
+        documentId,
+        orgId,
+        version: 1,
+      },
+    });
+
+    // Update document status to 'queued' per lifecycle: validated -> queued -> extracting
+    await supabase
+      .from('documents')
+      .update({ status: 'queued' })
+      .eq('id', documentId)
+      .eq('org_id', orgId);
+  } catch (queueErr) {
+    console.error('Failed to dispatch inngest extraction event:', queueErr);
+  }
+
   return {
     success: true,
     status: 'validated',
@@ -453,5 +475,36 @@ export async function cleanupAbandonedUploadsAction(): Promise<{ cleanedCount: n
     })
     .in('id', idsToReject);
 
-  return { cleanedCount: abandonedDocs.length };
+  // Sweep rows stuck in 'extracting' over 15 minutes (Phase 6.1)
+  const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data: stuckDocs } = await admin
+    .from('documents')
+    .select('id, org_id')
+    .eq('status', 'extracting')
+    .lt('created_at', fifteenMinutesAgo);
+
+  if (stuckDocs && stuckDocs.length > 0) {
+    const stuckIds = stuckDocs.map((d) => d.id);
+    await admin
+      .from('documents')
+      .update({
+        status: 'failed',
+        failure_reason: 'Extraction timeout (stuck in extracting over 15 minutes)',
+      })
+      .in('id', stuckIds);
+
+    for (const d of stuckDocs) {
+      await admin.from('audit_log').insert({
+        org_id: d.org_id,
+        action: 'document_extraction_timeout',
+        entity_type: 'document',
+        entity_id: d.id,
+        actor_role: 'system',
+        severity: 'warning',
+        details: { reason: 'Extraction timeout (stuck in extracting over 15 minutes)' },
+      });
+    }
+  }
+
+  return { cleanedCount: abandonedDocs.length + (stuckDocs?.length || 0) };
 }

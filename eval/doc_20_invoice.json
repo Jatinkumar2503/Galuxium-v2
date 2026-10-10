@@ -1,0 +1,11 @@
+{
+  "id": "20",
+  "category": "Deliberately Wrong: Invalid State GSTIN",
+  "invoice_number": "INV-2026-120",
+  "invoice_date": "2026-10-01",
+  "supplier_gstin": "98AABCU9603R1ZM",
+  "grand_total": 1180000,
+  "total_tax": 180000,
+  "subtotal": 1000000,
+  "should_fail_checks": true
+}

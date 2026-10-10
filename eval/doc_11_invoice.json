@@ -1,0 +1,11 @@
+{
+  "id": "11",
+  "category": "Phone Photo Slightly Blurry",
+  "invoice_number": "INV-2026-111",
+  "invoice_date": "2026-10-09",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 1652000,
+  "total_tax": 252000,
+  "subtotal": 1400000,
+  "should_fail_checks": false
+}

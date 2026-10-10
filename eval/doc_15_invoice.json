@@ -1,0 +1,11 @@
+{
+  "id": "15",
+  "category": "Handwritten Cash Voucher",
+  "invoice_number": "INV-2026-115",
+  "invoice_date": "2026-10-05",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 1298000,
+  "total_tax": 198000,
+  "subtotal": 1100000,
+  "should_fail_checks": false
+}

@@ -1,0 +1,11 @@
+{
+  "id": "16",
+  "category": "Bilingual Tax Invoice",
+  "invoice_number": "INV-2026-116",
+  "invoice_date": "2026-10-04",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 2360000,
+  "total_tax": 360000,
+  "subtotal": 2000000,
+  "should_fail_checks": false
+}

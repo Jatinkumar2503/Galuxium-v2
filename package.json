@@ -12,6 +12,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
     "@supabase/ssr": "^0.5.2",
@@ -19,6 +20,7 @@
     "@types/three": "^0.186.0",
     "clsx": "^2.1.1",
     "heic-convert": "^2.1.0",
+    "inngest": "^4.23.0",
     "lucide-react": "^1.16.0",
     "next": "^15.1.8",
     "pdf-lib": "^1.17.1",

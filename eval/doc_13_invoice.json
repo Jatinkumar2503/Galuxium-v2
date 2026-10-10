@@ -1,0 +1,11 @@
+{
+  "id": "13",
+  "category": "Handwriting Annotations",
+  "invoice_number": "INV-2026-113",
+  "invoice_date": "2026-10-07",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 590000,
+  "total_tax": 90000,
+  "subtotal": 500000,
+  "should_fail_checks": false
+}

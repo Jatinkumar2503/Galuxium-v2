@@ -1,0 +1,11 @@
+{
+  "id": "06",
+  "category": "Clean PDF Manufacturing HSN",
+  "invoice_number": "INV-2026-106",
+  "invoice_date": "2026-10-06",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 8260000,
+  "total_tax": 1260000,
+  "subtotal": 7000000,
+  "should_fail_checks": false
+}

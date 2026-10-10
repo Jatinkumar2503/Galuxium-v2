@@ -1,0 +1,11 @@
+{
+  "id": "07",
+  "category": "Clean PDF Retail Items",
+  "invoice_number": "INV-2026-107",
+  "invoice_date": "2026-10-07",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 4720000,
+  "total_tax": 720000,
+  "subtotal": 4000000,
+  "should_fail_checks": false
+}

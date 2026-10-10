@@ -71,3 +71,12 @@
   3. **Fail-Open Strategy:** If the database query times out or fails, the rate limiter catches the exception and falls back to the in-memory counter (`checkUploadRateLimit`). This guarantees document ingestion remains available during transient database degradation.
   4. **Cron Security:** In production, `/api/cron/cleanup-uploads` fails closed (401 Unauthorized) if `CRON_SECRET` is unset or mismatched. Schedule is set to `0 2 * * *` (once daily) to comply with Vercel Hobby limits.
 
+## ADR 010: AI Extraction Accuracy Target, Confidence Heuristic & Inngest Queue Architecture (Phase 6)
+- **Status:** Accepted
+- **Context:** Extracting unstructured Indian GST invoices requires high accuracy across diverse layouts (clean PDFs, mobile photos, bilingual Hindi/English receipts) while preventing prompt injection and controlling token costs.
+- **Accuracy Target:** Pre-declared statutory target of at least **90% accuracy** on key fields (`invoice_number`, `invoice_date`, `supplier_gstin`, `grand_total`, `tax_totals`) across the 20-document evaluation benchmark suite.
+- **Confidence Calibration:** Composite heuristic combining model-reported signals with deterministic statutory verification (GSTIN format/checksum, line math, intra-state CGST/SGST vs inter-state IGST, totals reconciliation). Any hard statutory error caps overall confidence at 0.5. Documents with `overall_confidence < 0.85` automatically flag `needs_review = true`.
+- **Monetary Precision:** All currency values are strictly converted to integer paise (`₹ 153.40` -> `15340` paise), completely eliminating floating-point rounding errors.
+- **Prompt Injection Defense:** Strict untrusted-data containment in system prompt with forced tool calling schema (`submit_invoice_extraction`). Document content is treated exclusively as data to transcribe, never executable instructions.
+- **Queue & Worker Architecture:** Background processing managed by Inngest (`src/app/api/inngest/route.ts`) with max 3 concurrency per org, 90-second per-document timeout, idempotency key `documentId:version`, exponential backoff for transient errors, and dead-letter on permanent failures.
+

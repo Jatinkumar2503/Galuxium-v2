@@ -1,0 +1,11 @@
+{
+  "id": "14",
+  "category": "Manual Tax Entry",
+  "invoice_number": "INV-2026-114",
+  "invoice_date": "2026-10-06",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 885000,
+  "total_tax": 135000,
+  "subtotal": 750000,
+  "should_fail_checks": false
+}

@@ -1,0 +1,11 @@
+{
+  "id": "08",
+  "category": "Clean PDF Logistics Two-Page",
+  "invoice_number": "INV-2026-108",
+  "invoice_date": "2026-10-08",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 9440000,
+  "total_tax": 1440000,
+  "subtotal": 8000000,
+  "should_fail_checks": false
+}

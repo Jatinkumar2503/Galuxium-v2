@@ -1,0 +1,11 @@
+{
+  "id": "19",
+  "category": "Deliberately Wrong: Tax Mismatch",
+  "invoice_number": "INV-2026-119",
+  "invoice_date": "2026-10-01",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 9999999,
+  "total_tax": 180000,
+  "subtotal": 9819999,
+  "should_fail_checks": true
+}

@@ -1,0 +1,11 @@
+{
+  "id": "04",
+  "category": "Clean PDF Inter-state IGST",
+  "invoice_number": "INV-2026-104",
+  "invoice_date": "2026-10-04",
+  "supplier_gstin": "27AABCU9603R1ZM",
+  "grand_total": 1770000,
+  "total_tax": 270000,
+  "subtotal": 1500000,
+  "should_fail_checks": false
+}
