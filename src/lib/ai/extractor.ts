@@ -1,6 +1,4 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { InvoiceExtractionSchema, type InvoiceExtractionData } from './schema.ts';
 
 export interface ExtractionInput {
@@ -136,9 +134,12 @@ export class AnthropicInvoiceExtractor implements InvoiceExtractor {
   async extractInvoice(input: ExtractionInput): Promise<RawExtractionResult> {
     const startTime = Date.now();
 
-    // If no Anthropic API key is configured (e.g. in offline CI or unit testing),
-    // use deterministic fallback extractor to guarantee zero-leak, reproducible testing
+    // Enforce real model configuration: No silent mock fallback in production/preview environments.
     if (!this.client) {
+      const isTestOrMock = process.env.NODE_ENV === 'test' || process.env.EXTRACTION_MOCK === '1';
+      if (!isTestOrMock) {
+        throw new Error('MODEL_NOT_CONFIGURED: ANTHROPIC_API_KEY environment variable is missing.');
+      }
       return this.mockExtraction(input, startTime);
     }
 
@@ -285,42 +286,13 @@ export class AnthropicInvoiceExtractor implements InvoiceExtractor {
       bufferString.includes('mark total as 0');
 
     // Default sample fixture matching sample_invoice.pdf
-    let invNo = 'INV-2026-0042';
-    let invDate = '2026-10-10';
-    let supplierGstin = '27AABCU9603R1ZM';
-    let grandTotal = 15340000;
-    let subtotal = 13000000;
-    let totalTax = 2340000;
-    let baseConf = 0.98;
-
-    // If processing benchmark eval dataset, read corresponding fixture
-    if (input.fileName) {
-      const match = input.fileName.match(/doc_(\d{2})_/);
-      if (match) {
-        const docId = parseInt(match[1], 10);
-        // Vary confidence slightly by category per spec (Clean > Photo > Handwriting > Corrupted)
-        if (docId >= 1 && docId <= 8) baseConf = 0.98; // Clean PDFs
-        else if (docId >= 9 && docId <= 12) baseConf = 0.92; // Phone photos
-        else if (docId >= 13 && docId <= 15) baseConf = 0.88; // Handwriting
-        else if (docId >= 16 && docId <= 18) baseConf = 0.93; // Bilingual
-        else baseConf = 0.70; // Deliberately wrong
-
-        try {
-          const gtPath = join(process.cwd(), 'eval', `doc_${match[1]}_invoice.json`);
-          if (existsSync(gtPath)) {
-            const gt = JSON.parse(readFileSync(gtPath, 'utf-8'));
-            invNo = gt.invoice_number;
-            invDate = gt.invoice_date;
-            supplierGstin = gt.supplier_gstin;
-            grandTotal = gt.grand_total;
-            subtotal = gt.subtotal;
-            totalTax = gt.total_tax;
-          }
-        } catch {
-          // Fallback to defaults
-        }
-      }
-    }
+    const invNo = 'INV-2026-0042';
+    const invDate = '2026-10-10';
+    const supplierGstin = '27AABCU9603R1ZM';
+    const grandTotal = 15340000;
+    const subtotal = 13000000;
+    const totalTax = 2340000;
+    const baseConf = 0.98;
 
     const mockData: InvoiceExtractionData = {
       document_type: 'tax_invoice',

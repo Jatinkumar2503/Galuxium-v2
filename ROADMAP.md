@@ -137,7 +137,7 @@
 
 ---
 
-## PHASE 6: Extraction Pipeline (Queue + AI) (10/10 Complete)
+## PHASE 6: Extraction Pipeline (Queue + AI) (Pending Live Verification)
 *Goal: reliable structured data from messy documents.*
 
 - [x] 6.1 Set up the job queue (Inngest or Trigger.dev) with retries, backoff, and a dead-letter state.
@@ -148,10 +148,10 @@
 - [x] 6.6 Add deterministic checks: GSTIN format, tax arithmetic, date sanity, total = sum of lines.
 - [x] 6.7 Redact PII (e.g., personal phone numbers, account numbers) before storing prompts or logs.
 - [x] 6.8 Track cost and latency per document in `usage_events`.
-- [x] 6.9 Build the 20-document test set (clean, rotated, blurry, handwritten, multi-language) with expected values, and an accuracy report script.
+- [ ] 6.9 Build the 20-document test set (clean, rotated, blurry, handwritten, multi-language) with expected values, and an accuracy report script.
 - [x] 6.10 Show live processing status in the UI (queued, extracting, validated, failed) with real-time updates.
 
-**Exit Gate:** accuracy on the test set meets your written target (set it in 6.9, e.g., 90% of key fields). Failures retry and then land in a visible failed state. No raw PII in logs. — **PASSED (Verified Oct 10, 2026: 100.0% Key-Field Accuracy on 20-Doc Benchmark, Zero PII Leaks, Dead-Letter Recovery Verified)**
+**Exit Gate:** accuracy on the test set meets your written target (set it in 6.9, e.g., 90% of key fields). Failures retry and then land in a visible failed state. No raw PII in logs. — **PENDING (Awaiting real Anthropic API key configuration; 20-doc benchmark not yet run; live Inngest sync pending)**
 
 ---
 

@@ -145,8 +145,12 @@ export const extractDocument = inngest.createFunction(
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'AI Extraction failed';
-        // Permanent format or unreadable errors should not retry indefinitely
-        if (msg.includes('validation after') || msg.includes('unreadable')) {
+        // Permanent format, missing config, or unreadable errors should not retry indefinitely
+        if (
+          msg.includes('validation after') ||
+          msg.includes('unreadable') ||
+          msg.includes('MODEL_NOT_CONFIGURED')
+        ) {
           throw new NonRetriableError(msg);
         }
         throw err; // Transient errors (429, 5xx) will be retried automatically by Inngest

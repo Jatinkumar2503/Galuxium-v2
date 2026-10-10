@@ -65,7 +65,16 @@ export async function retryExtractionAction(
     });
   } catch (queueErr) {
     console.error('Failed to dispatch retry event to inngest:', queueErr);
-    return { success: false, error: 'Failed to enqueue extraction job.' };
+    await supabase
+      .from('documents')
+      .update({
+        status: 'failed',
+        failure_reason: 'queue_unavailable: Background processing queue is unreachable or not configured.',
+      })
+      .eq('id', documentId)
+      .eq('org_id', orgId);
+
+    return { success: false, error: 'queue_unavailable: Background processing queue is unreachable or not configured.' };
   }
 
   return {

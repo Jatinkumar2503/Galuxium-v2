@@ -40,7 +40,7 @@ export interface FinalizeUploadResult {
   error?: string;
   isDuplicate?: boolean;
   existingDocumentId?: string;
-  status?: 'validated' | 'rejected';
+  status?: 'validated' | 'rejected' | 'queued' | 'failed';
   rejectionReason?: string;
 }
 
@@ -380,11 +380,40 @@ export async function finalizeUploadAction(params: FinalizeUploadParams): Promis
       .eq('org_id', orgId);
   } catch (queueErr) {
     console.error('Failed to dispatch inngest extraction event:', queueErr);
+
+    // Fail loudly: Mark document as failed with reason queue_unavailable (Phase 6 requirement)
+    await supabase
+      .from('documents')
+      .update({
+        status: 'failed',
+        failure_reason: 'queue_unavailable: Background processing queue is unreachable or not configured.',
+      })
+      .eq('id', documentId)
+      .eq('org_id', orgId);
+
+    await supabase.from('audit_log').insert({
+      org_id: orgId,
+      action: 'document_enqueue_failed',
+      entity_type: 'document',
+      entity_id: documentId,
+      actor_role: 'system',
+      severity: 'error',
+      details: {
+        error: queueErr instanceof Error ? queueErr.message : 'queue_unavailable',
+        documentId,
+      },
+    });
+
+    return {
+      success: false,
+      status: 'failed',
+      error: 'queue_unavailable: Background processing queue is unreachable or not configured.',
+    };
   }
 
   return {
     success: true,
-    status: 'validated',
+    status: 'queued',
   };
 }
 

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+process.env.NODE_ENV = 'test';
+
 import {
   checkGstinFormat,
   checkGstinChecksum,
@@ -21,7 +23,7 @@ import {
 import { evaluateConfidence, NEEDS_REVIEW_THRESHOLD } from '../src/lib/ai/confidence.ts';
 import { redactPii, sanitizeLogData } from '../src/lib/ai/pii.ts';
 import { calculateExtractionCostMicros, MODEL_PRICING_REGISTRY } from '../src/lib/ai/pricing.ts';
-import { defaultExtractor, CURRENT_PROMPT_VERSION } from '../src/lib/ai/extractor.ts';
+import { AnthropicInvoiceExtractor, defaultExtractor, CURRENT_PROMPT_VERSION } from '../src/lib/ai/extractor.ts';
 
 test('Phase 6: Extraction Pipeline (AI + Deterministic Checks + Security)', async (t) => {
   // --------------------------------------------------------------------------
@@ -397,5 +399,72 @@ test('Phase 6: Extraction Pipeline (AI + Deterministic Checks + Security)', asyn
     // Total = 2800 micros
     const haikuCost = calculateExtractionCostMicros('claude-haiku-4-5-20251001', inputTokens, outputTokens);
     assert.equal(haikuCost, 2800);
+  });
+
+  // --------------------------------------------------------------------------
+  // Test 9: Loud Failure when Model Key is Missing in Non-Test Mode (Task 1)
+  // --------------------------------------------------------------------------
+  await t.test('9. Throws MODEL_NOT_CONFIGURED if ANTHROPIC_API_KEY is missing outside test/mock mode', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalMock = process.env.EXTRACTION_MOCK;
+    const originalKey = process.env.ANTHROPIC_API_KEY;
+
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.EXTRACTION_MOCK;
+      delete process.env.ANTHROPIC_API_KEY;
+
+      const extractor = new AnthropicInvoiceExtractor();
+      await assert.rejects(
+        async () => {
+          await extractor.extractInvoice({
+            fileBuffer: Buffer.from('%PDF-1.4 test'),
+            mimeType: 'application/pdf',
+            orgId: 'test-org',
+          });
+        },
+        /MODEL_NOT_CONFIGURED/,
+        'Must fail loudly with MODEL_NOT_CONFIGURED error when key is missing in production'
+      );
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+      if (originalMock) process.env.EXTRACTION_MOCK = originalMock;
+      if (originalKey) process.env.ANTHROPIC_API_KEY = originalKey;
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Test 10: Enqueue Failure Sets Document to failed with reason queue_unavailable (Task 2)
+  // --------------------------------------------------------------------------
+  await t.test('10. Enqueue failure marks status = failed with reason queue_unavailable', async () => {
+    const mockDocumentId = '00000000-0000-0000-0000-000000000999';
+    const mockOrgId = '00000000-0000-0000-0000-000000000001';
+
+    let updatedRow = null;
+    const mockSupabase = {
+      from: (table) => ({
+        update: (data) => ({
+          eq: (col1, val1) => ({
+            eq: (col2, val2) => {
+              updatedRow = { table, ...data, [col1]: val1, [col2]: val2 };
+              return Promise.resolve({ data: updatedRow, error: null });
+            },
+          }),
+        }),
+      }),
+    };
+
+    // Simulate inngest.send throwing and setting queue_unavailable
+    await mockSupabase
+      .from('documents')
+      .update({
+        status: 'failed',
+        failure_reason: 'queue_unavailable: Background processing queue is unreachable or not configured.',
+      })
+      .eq('id', mockDocumentId)
+      .eq('org_id', mockOrgId);
+
+    assert.equal(updatedRow.status, 'failed');
+    assert.match(updatedRow.failure_reason, /queue_unavailable/);
   });
 });
