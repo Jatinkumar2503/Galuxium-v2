@@ -35,7 +35,13 @@ const envSchema = z.object({
 });
 
 function validateEnv() {
-  const parsed = envSchema.safeParse(process.env);
+  const envData = {
+    ...process.env,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY,
+  };
+  const parsed = envSchema.safeParse(envData);
 
   if (!parsed.success) {
     console.error('❌ FATAL: Invalid or missing environment variables:');
