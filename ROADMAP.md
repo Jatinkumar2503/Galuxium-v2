@@ -115,13 +115,25 @@
 - [x] 5.3 Store files in private Supabase Storage buckets with per-org path prefixes and storage RLS.
 - [x] 5.4 Validate server-side: file type by magic bytes (not extension), size limit (e.g., 10MB), page limit.
 - [x] 5.5 Compute a content hash and block exact duplicate uploads, with a clear message.
-- [x] 5.6 In-memory PDF byte token pre-filter (/JavaScript, /Launch, /EmbeddedFile) with scan_status recorded (antivirus scanning kept out of Phase 6 to prevent scope creep).
+- [x] 5.6 In-memory PDF byte token pre-filter (/JavaScript, /Launch, /EmbeddedFile) with scan_status recorded (5.6 descoped: no malware scanner, heuristic filter only, see ADR-008).
 - [x] 5.7 Use signed, short-lived URLs for viewing files; never expose public URLs.
 - [x] 5.8 Show upload progress, per-file status, and retry on failure.
 - [x] 5.9 Build bulk upload (many files at once) with a queue indicator.
 - [x] 5.10 Rate-limit uploads per user and per org, and record each upload to `usage_events` and the audit log.
 
-**Exit Gate:** 50 mixed files upload successfully; a renamed `.exe` and a 50MB file are rejected; a second org cannot access the first org's files by URL. — **PASSED (Verified Oct 09, 2026: Live Supabase ingestion verified, storage policies active, and 19/19 storage tests passing)**
+**Exit Gate:** 50 mixed files upload successfully; a renamed `.exe` and a 50MB file are rejected; a second org cannot access the first org's files by URL. — **PASSED (Verified Oct 10, 2026)**
+
+### Recorded Deviations
+- **5.6 Descoped:** No malware scanner, heuristic filter only (see ADR-008).
+- **Batch Test Scale:** Batch test run with 30+1 files instead of 50 (15 valid PDFs, 15 invalid files, +1 rate-limit verification).
+- **Phase 1 Deployment:** Live Vercel deployment still deferred.
+
+### Known Issues
+- Request-stage refusals are not audited.
+- Login and lockout events are not logged.
+- Dashboard metrics are sample values.
+- `auth_org_role` and `is_org_member` lack a pinned `search_path`.
+- Check why the second account became owner of the seed org.
 
 ---
 
@@ -236,7 +248,7 @@
 | 2 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 3 | [x] Yes | [x] Yes | Oct 05, 2026 |
 | 4 | [x] Yes | [x] Yes | Oct 05, 2026 |
-| 5 | [x] Yes | [x] Yes | Oct 09, 2026 |
+| 5 | [x] Yes | [x] Yes | Oct 10, 2026 |
 | 6 | [ ] | [ ] | Pending |
 | 7 | [ ] | [ ] | Pending |
 | 8 | [ ] | [ ] | Pending |
